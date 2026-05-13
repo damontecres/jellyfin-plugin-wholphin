@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <title>Wholphin</title>
+
+</head>
+
+<body>
+    <div id="wholphinConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <style>
+                    .wholphin-tab-bar {
+                        display: flex;
+                    }
+                    .wholphin-tab-option.active{
+                        border-bottom-color: #741BF8FF;
+                    }
+                    .wholphin-tab{
+                        display: none;
+                    }
+                    .wholphin-tab.active{
+                        display: block;
+                    }
+                </style>
+                <h1>Wholphin</h1>
+                <div class="wholphin-tab-bar">
+                    <button type="button" class="wholphin-tab-option" data-tab="settings">Settings</button>
+                    <button type="button" class="wholphin-tab-option active" data-tab="yaml">YAML</button>
+                </div>
+
+                <form class="gotifyConfigurationForm">
+                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab active" data-tab="settings">
+                        <h2>Settings</h2>
+                        <div id="homeSettings">
+                            <div id="rowList">
+
+                            </div>
+                            <button type="button" is="emby-button" class="raised" onclick="addRow()">Add row</button>
+                        </div>
+                    </div>
+
+                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab" data-tab="yaml">
+                        <h1 class="sectionTitle">Wholphin</h1>
+                        <div class="inputContainer">
+                            <label for="yamlConfig">Yaml:</label>
+                            <textarea id="yamlConfig" is="emby-input" rows="20" cols="80"></textarea>
+                            <div class="fieldDescription">
+                                Description whatever
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Add row -->
+            <div id="addRowDiv" style="display: none;">
+                <h2>Add row</h2>
+                <form id="addRowForm">
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="rowType">Type</label>
+                        <select id="type" is="emby-select" required>
+                            <option value="ContinueWatching">Continue Watching</option>
+                            <option value="NextUp">Next Up</option>
+                            <option value="ContinueWatchingCombined">Combined Continue Watching &amp; Next Up</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+        <script type="text/javascript">
+            // Tab switching
+            document.querySelectorAll('.wholphin-tab-option').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    var targetTab = this.getAttribute('data-tab');
+
+                    document.querySelectorAll('.wholphin-tab-option').forEach(function(tab) {
+                        tab.classList.remove('active');
+                    });
+                    document.querySelectorAll('.wholphin-tab').forEach(function(tab) {
+                        tab.classList.remove('active');
+                    });
+
+                    document.querySelectorAll('[data-tab="' + targetTab + '"]').forEach(function(element){
+                        element.classList.add('active');
+                    })
+
+                });
+            });
+
+            var WholphinPluginConfiguration = {
+                uniquePluginId: "00E68C90-8840-48D0-AD65-0A5D58249652",
+                configUrl: window.ApiClient.getUrl('wholphin/config/home'),
+                config: {},
+                metadata: {names: {}},
+
+                loadConfiguration: function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(WholphinPluginConfiguration.uniquePluginId).then(function (config) {
+                        WholphinPluginConfiguration.config = config;
+                        console.log("Wholphin config: "+JSON.stringify(config));
+                        updateConfig();
+                        fetchNamesForRows();
+
+                        Dashboard.hideLoadingMsg();
+                    });
+                },
+
+                saveConfiguration: function () {
+                    Dashboard.showLoadingMsg();
+                    const activeTab = document.querySelector('.wholphin-tab-option.active');
+                    const isYaml = activeTab.getAttribute('data-tab')=='yaml';
+                    if(isYaml){
+                        try {
+                            const yamlConfig = jsyaml.load(document.getElementById('yamlConfig').value);
+                            WholphinPluginConfiguration.config = yamlConfig
+                        } catch (e) {
+                            // TODO toast
+                            console.log(e);
+                        }
+                    }
+
+                    ApiClient.updatePluginConfiguration(WholphinPluginConfiguration.uniquePluginId, WholphinPluginConfiguration.config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                        Dashboard.hideLoadingMsg();
+                    });
+                },
+            };
+
+            function updateYaml(){
+                const yamlConfig = jsyaml.dump(WholphinPluginConfiguration.config)
+                document.getElementById('yamlConfig').value = yamlConfig
+            }
+
+            function updateUi(){
+                var homeRows = (WholphinPluginConfiguration.config.HomeConfig.HomePageSettings.Rows || [])
+                var rowListElement = document.getElementById('rowList')
+                var rowList = homeRows.map(function(row, index){
+                    var name = row.name || row.type
+                    console.log("Wholphin row map: "+name+" - "+JSON.stringify(row));
+                    return '<div style="border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 20px; margin-bottom: 15px; background: rgba(0, 0, 0, 0.2); display: flex; justify-content: space-between; align-items: center;">' +
+                        '<div id="wholphinRow'+index+'" style="font-weight: bold; font-size: 1.3em;">' + name + '</div>' +
+                        '<div style="display: flex; gap: 8px; flex-shrink: 0;">' +
+                        '<button type="button" is="emby-button" class="raised" onclick="moveRow(' + index + ', -1)" ' + (index === 0 ? 'disabled' : '') + '>↑</button>' +
+                        '<button type="button" is="emby-button" class="raised" onclick="moveRow(' + index + ', 1)" ' + (index === homeRows.length - 1 ? 'disabled' : '') + '>↓</button>' +
+                        '<button type="button" is="emby-button" class="raised" onclick="deleteRow(' + index + ')">Delete</button>' +
+                        '</div>' +
+                        '</div>';
+                });
+                rowListElement.innerHTML = rowList.join('')
+            }
+
+            function fetchNamesForRows(){
+                var homeRows = (WholphinPluginConfiguration.config.HomeConfig.HomePageSettings.Rows || [])
+                homeRows.forEach(function(row, index){
+                    var type = row.type;
+                    console.log("Wholphin row: "+JSON.stringify(row));
+                    switch(type){
+                        case "ByParent":
+                            ApiClient.getItem(null, row.ParentId).then(function(result){
+                                console.log('Result: '+result.Name);
+                                homeRows[index].name=result.Name
+                                // WholphinPluginConfiguration.metadata.names[index] = result.Name;
+                                document.getElementById('wholphinRow'+index).innerHTML=result.Name;
+                                console.log("metadata: "+JSON.stringify(WholphinPluginConfiguration.metadata))
+                            }).catch((error)=>{
+                                console.error(errror)
+                            });
+                            break;
+                        case "":
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            }
+
+            function updateConfig(){
+                updateYaml();
+                updateUi();
+            }
+
+            function moveRow(index, direction){
+                var homeRows = (WholphinPluginConfiguration.config.HomeConfig.HomePageSettings.Rows || [])
+                if(index===0 && direction<0 || index >=homeRows.length - 1 && direction>0){
+                    return;
+                }else{
+                    const newIndex = index + direction;
+                    const temp = homeRows[index];
+                    homeRows[index] = homeRows[newIndex];
+                    homeRows[newIndex] = temp;
+                    updateConfig();
+                }
+            }
+
+            function deleteRow(index){
+                var homeRows = (WholphinPluginConfiguration.config.HomeConfig.HomePageSettings.Rows || [])
+                homeRows.splice(index, 1)
+                updateConfig();
+            }
+
+            function addRow(){
+                console.log("Add row");
+                document.getElementById("addRowDiv").style.display='block';
+            }
+
+            document.getElementById('wholphinConfigurationPage').addEventListener('pageshow', function () {
+                WholphinPluginConfiguration.loadConfiguration();
+            });
+
+            document.getElementById('wholphinConfigurationPage').addEventListener('submit', function (e) {
+                e.preventDefault();
+                WholphinPluginConfiguration.saveConfiguration();
+            });
+        </script>
+    </div>
+</body>
+
+</html>
