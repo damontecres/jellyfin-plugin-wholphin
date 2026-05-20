@@ -45,10 +45,62 @@ HomeConfig:
         Sort:
           Sort: Random
           Direction: Ascending
-# Seerr config
-SeerrConfig: {}
+# Seerr config (push Seerr server URL + login to the client)
+SeerrConfig:
+  serverUrl: https://seerr.example.com
+  login:
+    type: Jellyfin     # ApiKey | Jellyfin | Local
+    jellyfin:
+      useCurrentUser: true
 
 ```
+
+#### Seerr config
+
+When set, Wholphin will automatically configure its Seerr connection on first
+login using these values. If `login` is omitted, only the URL is pushed and the
+user supplies authentication themselves.
+
+Three login types are supported, matching Seerr's own auth options:
+
+```yaml
+# 1) API key — same login for everyone, no Seerr account needed per user
+serverUrl: https://seerr.example.com
+login:
+  type: ApiKey
+  apiKey: "<seerr-api-key>"
+
+# 2) Jellyfin auth — Seerr re-uses Jellyfin credentials
+serverUrl: https://seerr.example.com
+login:
+  type: Jellyfin
+  jellyfin:
+    # true: use whichever Jellyfin user is currently logged in to Wholphin.
+    # Wholphin will pass the in-memory Jellyfin password through to Seerr
+    # automatically on a fresh password login. On QuickConnect / token-based
+    # logins the password is not available — Wholphin will pre-fill URL and
+    # username, the end user has to enter the password once in the Seerr
+    # settings dialog. After that, subsequent restarts re-authenticate
+    # automatically using the stored credentials.
+    useCurrentUser: true
+    # Alternatively, hard-code a shared Jellyfin user/password for everyone
+    # (ignored when useCurrentUser: true):
+    username: "shared-jf-user"
+    password: "..."
+
+# 3) Local Seerr account — shared local Seerr login for everyone
+serverUrl: https://seerr.example.com
+login:
+  type: Local
+  local:
+    username: "household@example.com"
+    password: "..."
+```
+
+> [!WARNING]
+> Passwords are stored in cleartext in the plugin's configuration file. Treat
+> the Jellyfin config directory accordingly. Prefer `useCurrentUser: true` or
+> `ApiKey` over storing a shared password.
 
 #### Home page rows
 
