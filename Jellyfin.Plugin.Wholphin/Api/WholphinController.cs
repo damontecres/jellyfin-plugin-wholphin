@@ -69,6 +69,35 @@ public class WholphinController : ControllerBase
     }
   }
 
+  [Authorize]
+  [HttpGet("pages")]
+  [ProducesResponseType(StatusCodes.Status200OK)]
+  public ActionResult<IEnumerable<PageSummary>> GetPages()
+  {
+    var pages = WholphinPlugin.Instance!.Configuration.PagesConfig.Pages;
+    return Ok(pages.Select(p => new PageSummary
+    {
+      Id = p.Id,
+      Title = p.Title,
+      Icon = p.Icon,
+      Position = p.Position,
+    }));
+  }
+
+  [Authorize]
+  [HttpGet("pages/{id}")]
+  [ProducesResponseType(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public ActionResult<PageConfig> GetPage([FromRoute, Required] string id)
+  {
+    var page = WholphinPlugin.Instance!.Configuration.PagesConfig.Pages.FirstOrDefault(p => p.Id == id);
+    if (page == null)
+    {
+      return NotFound();
+    }
+    return page;
+  }
+
   [HttpGet("config")]
   [Authorize(Policy = Policies.RequiresElevation)]
   [ProducesResponseType(StatusCodes.Status200OK)]
@@ -130,4 +159,22 @@ public class Response
 {
   public string? Error { get; set; } = null;
   public string? Result { get; set; } = null!;
+}
+
+// Lightweight metadata for the page list endpoint; clients use this to build
+// nav-drawer entries before opening the page itself (which loads the full
+// PageConfig including rows).
+public class PageSummary
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = default!;
+
+  [JsonPropertyName("title")]
+  public string Title { get; set; } = default!;
+
+  [JsonPropertyName("icon")]
+  public string? Icon { get; set; }
+
+  [JsonPropertyName("position")]
+  public PagePosition Position { get; set; }
 }

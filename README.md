@@ -47,6 +47,25 @@ HomeConfig:
           Direction: Ascending
 # Seerr config
 SeerrConfig: {}
+# Extra nav-drawer pages shown in the client navigation drawer (optional).
+PagesConfig:
+  version: 1
+  pages:
+    - id: trending-movies
+      title: Trending Movies
+      # Icon: either a Material Icons name (Home, Star, Settings, ...) or
+      # an http(s):// URL to a PNG/SVG image the client downloads via Coil.
+      # Unknown names fall back to a generic star icon.
+      # Browse names at https://fonts.google.com/icons
+      icon: https://fonts.gstatic.com/s/i/materialicons/trending_up/v12/24px.svg
+      # Where to slot the page into the drawer. One of:
+      # AfterHome | AfterFavorites | AfterDiscover | AfterLibraries | End
+      position: AfterHome
+      # Rows shown on the page. Same row types as HomeConfig.HomePageSettings.Rows.
+      rows:
+        - type: ByParent
+          parentId: <UUID>
+          recursive: false
 
 ```
 
