@@ -85,6 +85,22 @@ Sample YAML for home page rows
     sort: SortName
     direction: Ascending
 
+# Items from an arbitrary Jellyfin endpoint that returns a QueryResult<BaseItemDto>.
+# Lets other plugins (e.g. jellyfin-plugin-home-sections) feed rows into Wholphin
+# without Wholphin needing to know about them.
+#
+# `userId` is injected automatically from the currently logged-in user. You can
+# override it by including a `userId` entry in `query`.
+- type: CustomEndpoint
+  title: My Requests                                  # Optional, falls back to endpoint
+  endpoint: /HomeScreen/Section/MyJellyseerrRequests  # relative to the Jellyfin baseUrl, or a full URL
+  query:                                              # Optional extra query parameters
+    - key: language
+      value: en
+  headers:                                            # Optional extra headers (auth token is added automatically)
+    - key: X-Trace
+      value: wholphin
+
 ```
 
 ## Acknowledgements
