@@ -69,6 +69,21 @@ PagesConfig:
 
 ```
 
+The page list endpoint returns summaries wrapped in an object so the response can be extended without breaking clients:
+
+```json
+{
+  "pages": [
+    {
+      "id": "trending-movies",
+      "title": "Trending Movies",
+      "icon": "https://fonts.gstatic.com/s/i/materialicons/trending_up/v12/24px.svg",
+      "position": "AfterHome"
+    }
+  ]
+}
+```
+
 #### Home page rows
 
 Sample YAML for home page rows

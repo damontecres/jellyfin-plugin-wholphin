@@ -72,16 +72,19 @@ public class WholphinController : ControllerBase
   [Authorize]
   [HttpGet("pages")]
   [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult<IEnumerable<PageSummary>> GetPages()
+  public ActionResult<PagesResponse> GetPages()
   {
     var pages = WholphinPlugin.Instance!.Configuration.PagesConfig.Pages;
-    return Ok(pages.Select(p => new PageSummary
+    return Ok(new PagesResponse
     {
-      Id = p.Id,
-      Title = p.Title,
-      Icon = p.Icon,
-      Position = p.Position,
-    }));
+      Pages = pages.Select(p => new PageSummary
+      {
+        Id = p.Id,
+        Title = p.Title,
+        Icon = p.Icon,
+        Position = p.Position,
+      }),
+    });
   }
 
   [Authorize]
@@ -164,6 +167,12 @@ public class Response
 // Lightweight metadata for the page list endpoint; clients use this to build
 // nav-drawer entries before opening the page itself (which loads the full
 // PageConfig including rows).
+public class PagesResponse
+{
+  [JsonPropertyName("pages")]
+  public IEnumerable<PageSummary> Pages { get; set; } = Array.Empty<PageSummary>();
+}
+
 public class PageSummary
 {
   [JsonPropertyName("id")]
