@@ -136,7 +136,7 @@ public class CustomEndpoint : HomeRowConfig
   public string Endpoint { get; set; } = default!;
 
   [JsonPropertyName("title")]
-  public string? Title { get; set; }
+  public string Title { get; set; } = default!;
 
   [JsonPropertyName("headers")]
   public List<KeyValueEntry>? Headers { get; set; }

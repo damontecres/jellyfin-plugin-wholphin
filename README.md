@@ -92,8 +92,8 @@ Sample YAML for home page rows
 # `userId` is injected automatically from the currently logged-in user. You can
 # override it by including a `userId` entry in `query`.
 - type: CustomEndpoint
-  title: My Requests                                  # Optional, falls back to endpoint
-  endpoint: /HomeScreen/Section/MyJellyseerrRequests  # relative to the Jellyfin baseUrl, or a full URL
+  title: My Requests
+  endpoint: /HomeScreen/Section/MyJellyseerrRequests  # relative to the Jellyfin baseUrl
   query:                                              # Optional extra query parameters
     - key: language
       value: en
