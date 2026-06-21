@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Enums;
@@ -28,6 +29,7 @@ public class SortAndDirection
 [JsonDerivedType(typeof(Suggestions), typeDiscriminator: nameof(Suggestions))]
 [JsonDerivedType(typeof(ByParent), typeDiscriminator: nameof(ByParent))]
 [JsonDerivedType(typeof(GetItems), typeDiscriminator: nameof(GetItems))]
+[JsonDerivedType(typeof(CustomEndpoint), typeDiscriminator: nameof(CustomEndpoint))]
 public abstract class HomeRowConfig
 {
   public string type => this.GetType().Name;
@@ -109,4 +111,36 @@ public class GetItems : HomeRowConfig
   [JsonPropertyName("name")]
   public String Name {get; set;}
   // public GetItemsRequest getItems {get; set;}
+}
+
+public class KeyValueEntry
+{
+  [JsonPropertyName("key")]
+  public string Key { get; set; } = default!;
+
+  [JsonPropertyName("value")]
+  public string Value { get; set; } = default!;
+}
+
+// Items are fetched by calling an arbitrary Jellyfin endpoint that returns a
+// QueryResult<BaseItemDto>. Enables third-party plugins (e.g. home-sections)
+// to inject their own home-screen rows without Wholphin needing to know about
+// them.
+//
+// Headers/Query are List<KeyValueEntry> rather than Dictionary because Jellyfin
+// persists plugin config via System.Xml.Serialization, which doesn't support
+// IDictionary.
+public class CustomEndpoint : HomeRowConfig
+{
+  [JsonPropertyName("endpoint")]
+  public string Endpoint { get; set; } = default!;
+
+  [JsonPropertyName("title")]
+  public string Title { get; set; } = default!;
+
+  [JsonPropertyName("headers")]
+  public List<KeyValueEntry>? Headers { get; set; }
+
+  [JsonPropertyName("query")]
+  public List<KeyValueEntry>? Query { get; set; }
 }
