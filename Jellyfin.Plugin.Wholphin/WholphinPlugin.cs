@@ -56,6 +56,7 @@ public class WholphinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
           ["Suggestions"] = typeof(Suggestions),
           ["ByParent"] = typeof(ByParent),
           ["GetItems"] = typeof(GetItems),
+          ["CustomEndpoint"] = typeof(CustomEndpoint),
         });
       }
       )

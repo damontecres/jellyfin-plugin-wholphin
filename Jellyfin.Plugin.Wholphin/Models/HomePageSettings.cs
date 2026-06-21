@@ -18,6 +18,7 @@ namespace Jellyfin.Plugin.Wholphin.Models;
 [XmlInclude(typeof(Suggestions))]
 [XmlInclude(typeof(ByParent))]
 [XmlInclude(typeof(GetItems))]
+[XmlInclude(typeof(CustomEndpoint))]
 public class HomePageSettings
 {
   [JsonPropertyName("version")]
