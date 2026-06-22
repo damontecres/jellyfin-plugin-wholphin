@@ -8,7 +8,7 @@ public class PluginConfiguration : BasePluginConfiguration
   public int Version { get; set; } = 1;
   public HomeConfig HomeConfig { get; set; } = new();
   public SeerrConfig SeerrConfig { get; set; } = new();
-
+  public PagesConfig PagesConfig { get; set; } = new();
 }
 
 public class HomeConfig
