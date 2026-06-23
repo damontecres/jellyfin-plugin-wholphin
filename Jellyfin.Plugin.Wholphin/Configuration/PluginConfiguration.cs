@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using MediaBrowser.Model.Plugins;
 using Jellyfin.Plugin.Wholphin.Models;
 
@@ -18,5 +19,12 @@ public class HomeConfig
 
 public class SeerrConfig
 {
-  public string defaultSeerrUrl { get; set; }
+  [JsonPropertyName("version")]
+  public int Version { get; set; } = 1;
+
+  [JsonPropertyName("serverUrl")]
+  public string? ServerUrl { get; set; }
+
+  [JsonPropertyName("login")]
+  public SeerrLogin? Login { get; set; }
 }

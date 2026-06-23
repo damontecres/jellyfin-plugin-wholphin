@@ -45,9 +45,33 @@ HomeConfig:
         Sort:
           Sort: Random
           Direction: Ascending
-# Seerr config
-SeerrConfig: {}
+# Seerr config (push Seerr server URL + optional login to the client)
+SeerrConfig:
+  serverUrl: https://seerr.example.com
 
+```
+
+#### Seerr config
+
+When set, Wholphin will automatically configure its Seerr connection on first
+login using these values. If `login` is omitted, only the URL is pushed and the
+user supplies authentication themselves.
+
+Two login types are supported when credentials are provided:
+
+```yaml
+# 1) API key — same login for everyone, no Seerr account needed per user
+serverUrl: https://seerr.example.com
+login:
+  type: ApiKey
+  apiKey: "<seerr-api-key>"
+# 2) Local Seerr account — shared local Seerr login for everyone
+serverUrl: https://seerr.example.com
+login:
+  type: Local
+  local:
+    username: "household@example.com"
+    password: "..."
 ```
 
 #### Home page rows

@@ -69,6 +69,20 @@ public class WholphinController : ControllerBase
     }
   }
 
+  [Authorize]
+  [HttpGet("seerrsettings")]
+  [ProducesResponseType(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status404NotFound)]
+  public ActionResult<SeerrConfig> GetSeerrSettings()
+  {
+    var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
+    if (string.IsNullOrWhiteSpace(seerr.ServerUrl))
+    {
+      return NotFound();
+    }
+    return seerr;
+  }
+
   [HttpGet("config")]
   [Authorize(Policy = Policies.RequiresElevation)]
   [ProducesResponseType(StatusCodes.Status200OK)]
@@ -116,6 +130,40 @@ public class WholphinController : ControllerBase
     }
     var toSave = WholphinPlugin.Instance!.Configuration;
     toSave.HomeConfig.HomePageSettings = p;
+    WholphinPlugin.Instance.UpdateConfiguration(toSave);
+    return Ok();
+  }
+
+  [HttpGet("config/seerr")]
+  [Authorize(Policy = Policies.RequiresElevation)]
+  [ProducesResponseType(StatusCodes.Status200OK)]
+  public ActionResult<Response> GetSeerrSettingsConfig()
+  {
+    var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
+    var result = WholphinPlugin.YamlSerializer.Serialize(seerr);
+    return new Response { Result = result };
+  }
+
+  [HttpPost("config/seerr")]
+  [Authorize(Policy = Policies.RequiresElevation)]
+  [ProducesResponseType(StatusCodes.Status200OK)]
+  [ProducesResponseType(StatusCodes.Status400BadRequest)]
+  public ActionResult<Response> SaveSeerrSettingsConfig(
+    [FromBody, Required] ConfigValue config
+  )
+  {
+    SeerrConfig s;
+    try
+    {
+      s = WholphinPlugin.YamlDeserializer.Deserialize<SeerrConfig>(config.Value);
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Error parsing seerr settings");
+      return BadRequest(e.Message);
+    }
+    var toSave = WholphinPlugin.Instance!.Configuration;
+    toSave.SeerrConfig = s;
     WholphinPlugin.Instance.UpdateConfiguration(toSave);
     return Ok();
   }
