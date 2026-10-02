@@ -1,0 +1,33 @@
+name: PR
+
+on:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+env: {}
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        fetch-depth: 0 # Need the tags to build
+    - name: Setup Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      with:
+        python-version: '3.14'
+    - name: Run pre-commit
+      uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+
+  test:
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/test.yaml@8eed318e74aed0a7cc41de6dafd36eb693a1f6fc
+    needs: pre-commit
+
+  build:
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@8eed318e74aed0a7cc41de6dafd36eb693a1f6fc
+    needs: test
