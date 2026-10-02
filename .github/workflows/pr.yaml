@@ -7,7 +7,8 @@ defaults:
   run:
     shell: bash
 
-env: {}
+env:
+  NAME: "Jellyfin.Plugin.Wholphin"
 
 jobs:
   pre-commit:
@@ -24,10 +25,23 @@ jobs:
     - name: Run pre-commit
       uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
-  test:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/test.yaml@8eed318e74aed0a7cc41de6dafd36eb693a1f6fc
-    needs: pre-commit
-
   build:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@8eed318e74aed0a7cc41de6dafd36eb693a1f6fc
     needs: test
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # Need the tags to build
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Test
+        run: |
+          dotnet test "${{ env.NAME }}"
+
+      - name: Build
+        run: |
+          dotnet build "${{ env.NAME }}" --configuration Debug
