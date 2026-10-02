@@ -13,7 +13,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
 public class HomeConfig
 {
-  public HomePageSettings? HomePageSettings { get; set; }
+  public HomePageSettings HomePageSettings { get; set; } = new();
 }
 
 public class SeerrConfig

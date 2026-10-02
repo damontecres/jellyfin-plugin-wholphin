@@ -23,15 +23,24 @@
                     .wholphin-tab.active{
                         display: block;
                     }
+                    .yaml-textarea {
+                        background-color: #1d1d1d;
+                        border: 1px solid #220c3d;
+                        border-radius: 6px;
+                        resize: both;
+                        color: #bebebe;
+                    }
                 </style>
                 <h1>Wholphin</h1>
                 <div class="wholphin-tab-bar">
+                <!--
                     <button type="button" class="wholphin-tab-option" data-tab="settings">Settings</button>
                     <button type="button" class="wholphin-tab-option active" data-tab="yaml">YAML</button>
+                -->
                 </div>
 
                 <form class="gotifyConfigurationForm">
-                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab active" data-tab="settings">
+                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab" data-tab="settings">
                         <h2>Settings</h2>
                         <div id="homeSettings">
                             <div id="rowList">
@@ -41,13 +50,13 @@
                         </div>
                     </div>
 
-                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab" data-tab="yaml">
-                        <h1 class="sectionTitle">Wholphin</h1>
+                    <div class="verticalSection verticalSection-extrabottompadding wholphin-tab active" data-tab="yaml">
+                        <h1 class="sectionTitle">YAML Configuration</h1>
                         <div class="inputContainer">
-                            <label for="yamlConfig">Yaml:</label>
-                            <textarea id="yamlConfig" is="emby-input" rows="20" cols="80"></textarea>
+                            <!-- <label for="yamlConfig">Yaml:</label> -->
+                            <textarea class="yaml-textarea" id="yamlConfig" is="emby-input" rows="20" cols="80"></textarea>
                             <div class="fieldDescription">
-                                Description whatever
+                                YAML configuration, see <a href="https://github.com/damontecres/jellyfin-plugin-wholphin#yaml-config">documentation</a>
                             </div>
                         </div>
                     </div>
@@ -115,22 +124,30 @@
 
                 saveConfiguration: function () {
                     Dashboard.showLoadingMsg();
-                    const activeTab = document.querySelector('.wholphin-tab-option.active');
+                    const activeTab = document.querySelector('.wholphin-tab.active');
                     const isYaml = activeTab.getAttribute('data-tab')=='yaml';
                     if(isYaml){
                         try {
                             const yamlConfig = jsyaml.load(document.getElementById('yamlConfig').value);
-                            WholphinPluginConfiguration.config = yamlConfig
+                            ApiClient.updatePluginConfiguration(WholphinPluginConfiguration.uniquePluginId, yamlConfig).then(function (result) {
+                                Dashboard.processPluginConfigurationUpdateResult(result);
+                                WholphinPluginConfiguration.config = yamlConfig
+                                Dashboard.hideLoadingMsg();
+                            }).catch(async (error) => {
+                                console.error(error);
+                                Dashboard.hideLoadingMsg();
+                                const errorMessage = await error.text() || "An unknown error occurred.";
+                                Dashboard.alert({
+                                    title: "Error",
+                                    message: errorMessage
+                                });
+                            });
                         } catch (e) {
                             // TODO toast
+                            Dashboard.hideLoadingMsg();
                             console.log(e);
                         }
                     }
-
-                    ApiClient.updatePluginConfiguration(WholphinPluginConfiguration.uniquePluginId, WholphinPluginConfiguration.config).then(function (result) {
-                        Dashboard.processPluginConfigurationUpdateResult(result);
-                        Dashboard.hideLoadingMsg();
-                    });
                 },
             };
 

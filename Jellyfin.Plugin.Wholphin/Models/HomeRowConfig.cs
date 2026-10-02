@@ -32,7 +32,7 @@ public class SortAndDirection
 [JsonDerivedType(typeof(CustomEndpoint), typeDiscriminator: nameof(CustomEndpoint))]
 public abstract class HomeRowConfig
 {
-  public string type => this.GetType().Name;
+  // public string type => this.GetType().Name;
 
   [JsonPropertyName("viewOptions")]
   public HomeRowViewOptions ViewOptions { get; set; }

@@ -108,6 +108,7 @@ public class WholphinController : ControllerBase
     try
     {
       p = WholphinPlugin.YamlDeserializer.Deserialize<HomePageSettings>(config.Value);
+
     }
     catch (Exception e)
     {
