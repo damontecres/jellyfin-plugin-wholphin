@@ -21,9 +21,9 @@ namespace Jellyfin.Plugin.Wholphin.Models;
 [XmlInclude(typeof(CustomEndpoint))]
 public class HomePageSettings
 {
-  [JsonPropertyName("version")]
-  public int Version {get; set;} = 1;
+    [JsonPropertyName("version")]
+    public int Version { get; set; } = 1;
 
-  [JsonPropertyName("rows")]
-  public HomeRowConfig[] Rows {get;set;} = [];
+    [JsonPropertyName("rows")]
+    public HomeRowConfig[] Rows { get; set; } = [];
 }

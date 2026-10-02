@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.Wholphin</RootNamespace>
@@ -24,8 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-      <None Remove="Pages\HomeSettings\index.html" />
-      <EmbeddedResource Include="Pages\HomeSettings\index.html" />
+    <None Remove="Pages\HomeSettings\index.html" />
+    <EmbeddedResource Include="Pages\HomeSettings\index.html" />
   </ItemGroup>
-
 </Project>

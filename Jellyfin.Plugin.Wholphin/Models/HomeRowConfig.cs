@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Jellyfin.Data.Enums;
@@ -8,17 +7,20 @@ namespace Jellyfin.Plugin.Wholphin.Models;
 
 public class SortAndDirection
 {
-  [JsonPropertyName("sort")]
-  public ItemSortBy Sort{ get; set; }
+    [JsonPropertyName("sort")]
+    public ItemSortBy Sort { get; set; }
 
-  [JsonPropertyName("direction")]
-  public SortOrder Direction { get; set; }
+    [JsonPropertyName("direction")]
+    public SortOrder Direction { get; set; }
 }
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ContinueWatching), typeDiscriminator: nameof(ContinueWatching))]
 [JsonDerivedType(typeof(NextUp), typeDiscriminator: nameof(NextUp))]
-[JsonDerivedType(typeof(ContinueWatchingCombined), typeDiscriminator: nameof(ContinueWatchingCombined))]
+[JsonDerivedType(
+    typeof(ContinueWatchingCombined),
+    typeDiscriminator: nameof(ContinueWatchingCombined)
+)]
 [JsonDerivedType(typeof(RecentlyAdded), typeDiscriminator: nameof(RecentlyAdded))]
 [JsonDerivedType(typeof(RecentlyReleased), typeDiscriminator: nameof(RecentlyReleased))]
 [JsonDerivedType(typeof(Genres), typeDiscriminator: nameof(Genres))]
@@ -32,94 +34,81 @@ public class SortAndDirection
 [JsonDerivedType(typeof(CustomEndpoint), typeDiscriminator: nameof(CustomEndpoint))]
 public abstract class HomeRowConfig
 {
-  // public string type => this.GetType().Name;
+    // public string type => this.GetType().Name;
 
-  [JsonPropertyName("viewOptions")]
-  public HomeRowViewOptions ViewOptions { get; set; }
+    [JsonPropertyName("viewOptions")]
+    public HomeRowViewOptions ViewOptions { get; set; }
 }
 
-public class ContinueWatching : HomeRowConfig
-{
+public class ContinueWatching : HomeRowConfig { }
 
-}
+public class NextUp : HomeRowConfig { }
 
-public class NextUp : HomeRowConfig
-{
-
-}
-
-public class ContinueWatchingCombined : HomeRowConfig
-{
-
-}
+public class ContinueWatchingCombined : HomeRowConfig { }
 
 public class RecentlyAdded : HomeRowConfig
 {
-  [JsonPropertyName("parentId")]
-  public Guid ParentId {get; set;}
+    [JsonPropertyName("parentId")]
+    public Guid ParentId { get; set; }
 }
 
 public class RecentlyReleased : HomeRowConfig
 {
-  [JsonPropertyName("parentId")]
-  public Guid ParentId {get; set;}
+    [JsonPropertyName("parentId")]
+    public Guid ParentId { get; set; }
 }
 
 public class Genres : HomeRowConfig
 {
-  [JsonPropertyName("parentId")]
-  public Guid ParentId {get; set;}
+    [JsonPropertyName("parentId")]
+    public Guid ParentId { get; set; }
 }
 
 public class Favorite : HomeRowConfig
 {
-  [JsonPropertyName("kind")]
-  public BaseItemKind Kind {get; set;}
+    [JsonPropertyName("kind")]
+    public BaseItemKind Kind { get; set; }
 }
 
-public class Recordings : HomeRowConfig
-{
+public class Recordings : HomeRowConfig { }
 
-}
+public class TvPrograms : HomeRowConfig { }
 
-public class TvPrograms : HomeRowConfig
-{
-}
-public class TvChannels : HomeRowConfig
-{
-}
+public class TvChannels : HomeRowConfig { }
+
 public class Suggestions : HomeRowConfig
 {
-  [JsonPropertyName("parentId")]
-  public Guid ParentId {get; set;}
+    [JsonPropertyName("parentId")]
+    public Guid ParentId { get; set; }
 }
 
 public class ByParent : HomeRowConfig
 {
-  [JsonPropertyName("parentId")]
-  public Guid ParentId {get; set;}
-  [JsonPropertyName("recursive")]
-  public bool Recursive {get; set;}
+    [JsonPropertyName("parentId")]
+    public Guid ParentId { get; set; }
 
-  [JsonPropertyName("sort")]
-  public SortAndDirection? Sort {get; set;}
+    [JsonPropertyName("recursive")]
+    public bool Recursive { get; set; }
+
+    [JsonPropertyName("sort")]
+    public SortAndDirection? Sort { get; set; }
 }
 
 // TODO
 public class GetItems : HomeRowConfig
 {
-  [JsonPropertyName("name")]
-  public String Name {get; set;}
-  // public GetItemsRequest getItems {get; set;}
+    [JsonPropertyName("name")]
+    public String Name { get; set; }
+    // public GetItemsRequest getItems {get; set;}
 }
 
 public class KeyValueEntry
 {
-  [JsonPropertyName("key")]
-  public string Key { get; set; } = default!;
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = default!;
 
-  [JsonPropertyName("value")]
-  public string Value { get; set; } = default!;
+    [JsonPropertyName("value")]
+    public string Value { get; set; } = default!;
 }
 
 // Items are fetched by calling an arbitrary Jellyfin endpoint that returns a
@@ -132,15 +121,15 @@ public class KeyValueEntry
 // IDictionary.
 public class CustomEndpoint : HomeRowConfig
 {
-  [JsonPropertyName("endpoint")]
-  public string Endpoint { get; set; } = default!;
+    [JsonPropertyName("endpoint")]
+    public string Endpoint { get; set; } = default!;
 
-  [JsonPropertyName("title")]
-  public string Title { get; set; } = default!;
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = default!;
 
-  [JsonPropertyName("headers")]
-  public List<KeyValueEntry>? Headers { get; set; }
+    [JsonPropertyName("headers")]
+    public List<KeyValueEntry>? Headers { get; set; }
 
-  [JsonPropertyName("query")]
-  public List<KeyValueEntry>? Query { get; set; }
+    [JsonPropertyName("query")]
+    public List<KeyValueEntry>? Query { get; set; }
 }
