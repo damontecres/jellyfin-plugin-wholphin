@@ -1,0 +1,53 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - v*
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NAME: "Jellyfin.Plugin.Wholphin"
+  TAG_NAME: ${{ github.ref_name }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # Need the tags to build
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: |
+          dotnet publish "${{ env.NAME }}" --configuration Release
+
+      - name: Zip
+        run: |
+          mkdir -p ./dist
+          zip -r ./dist/${{ env.NAME }}.zip "${{ env.NAME }}/bin/Release/net10.0/publish/*.dll
+
+      - name: Checksums
+        run: |
+          echo "SHA256 checksums:"
+          sha256sum "./dist/${{ env.NAME }}.zip"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar
+
+          gh release create "${{ env.TAG_NAME }}" \
+            --latest --title "${{ env.TAG_NAME }}" --verify-tag -n "" --draft \
+            "./dist/${{ env.NAME }}.zip"
