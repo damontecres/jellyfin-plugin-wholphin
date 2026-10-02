@@ -36,7 +36,7 @@ jobs:
       - name: Zip
         run: |
           mkdir -p ./dist
-          zip -r ./dist/${{ env.NAME }}.zip "${{ env.NAME }}/bin/Release/net10.0/publish/*.dll"
+          find "${{ env.NAME }}/bin/Release/net10.0/publish" -type f -name "*.dll" -print0 | xargs -0 zip -j "./dist/${{ env.NAME }}.zip"
 
       - name: Checksums
         run: |
