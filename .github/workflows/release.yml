@@ -36,12 +36,13 @@ jobs:
       - name: Zip
         run: |
           mkdir -p ./dist
-          zip -r ./dist/${{ env.NAME }}.zip "${{ env.NAME }}/bin/Release/net10.0/publish/*.dll
+          zip -r ./dist/${{ env.NAME }}.zip "${{ env.NAME }}/bin/Release/net10.0/publish/*.dll"
 
       - name: Checksums
         run: |
-          echo "SHA256 checksums:"
+          echo "Checksums:"
           sha256sum "./dist/${{ env.NAME }}.zip"
+          md5sum "./dist/${{ env.NAME }}.zip"
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
