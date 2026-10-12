@@ -8,10 +8,6 @@ public enum SeerrLoginType
     None,
     ApiKey,
     Local,
-
-    /// <summary>
-    /// Server-side only: answered as an ApiKey login holding the caller's own Jellyfin token.
-    /// </summary>
     JellyfinToken,
 }
 
