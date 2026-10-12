@@ -123,7 +123,7 @@ When set, Wholphin will automatically configure its Seerr connection on first
 login using these values. If `login` is omitted, only the URL is pushed and the
 user supplies authentication themselves.
 
-Two login types are supported when credentials are provided:
+Three login types are supported when credentials are provided:
 
 ```yaml
 # 1) API key — same login for everyone, no Seerr account needed per user
@@ -138,48 +138,11 @@ login:
   local:
     username: "household@example.com"
     password: "..."
-```
-
-##### Per-user Jellyfin token
-
-A third login type, `JellyfinToken`, gives every user their own credentials without
-storing any in the plugin configuration. It is designed for a Seerr-compatible proxy
-that runs inside Jellyfin, such as a plugin serving `/Plugins/SeerrProxy`, and accepts
-a Jellyfin access token as its API key (Wholphin sends it in the `X-Api-Key` header).
-It does **not** work against Seerr itself: Seerr's API key authentication does not
-accept Jellyfin tokens.
-
-```yaml
+# 3) Jellyfin token — each user's own Jellyfin token, for a Seerr proxy on this Jellyfin server
 serverUrl: https://jellyfin.example.com/Plugins/SeerrProxy
 login:
   type: JellyfinToken
 ```
-
-All clients get the same URL, but individual credentials: when Wholphin asks for the
-Seerr settings, the plugin answers with an ordinary `ApiKey` login holding the
-requesting user's own Jellyfin access token. No password is involved, so this also
-works for users who signed in with Quick Connect.
-
-A Jellyfin access token grants full access to the user's account (to the whole server,
-for an administrator), so the plugin only provides one when:
-
-- the request was made by a signed-in user. Server API keys are refused (403).
-- `serverUrl` points at this Jellyfin server: it starts with the address the client used
-  to reach Jellyfin (including Jellyfin's base URL) or with the server's published URL.
-  The path after that is up to you. Anything else is refused (403) and a warning is
-  logged.
-
-The plugin can't see how your reverse proxy routes paths. If Jellyfin is served from the
-root of a host that also serves other apps under some paths, make sure `serverUrl`
-doesn't point at one of them.
-
-Behind a reverse proxy, add the proxy to Jellyfin's Known Proxies so that Jellyfin sees
-the public scheme and host of requests, or set the public address in Published Server
-URIs. Both are in Jellyfin's networking settings.
-
-Wholphin keeps the token it received when setting up Seerr. If that token is revoked or
-rotated, for example by signing the device out of Jellyfin, the stored Seerr login stops
-working. The plugin does not refresh it.
 
 ## Acknowledgements
 

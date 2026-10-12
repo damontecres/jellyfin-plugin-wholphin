@@ -4,8 +4,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.Wholphin", "Jellyfin.Plugin.Wholphin/Jellyfin.Plugin.Wholphin.csproj", "{0BA7C23B-E2F7-AAD4-8C56-1CB0F2596E82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.Wholphin.Tests", "Jellyfin.Plugin.Wholphin.Tests/Jellyfin.Plugin.Wholphin.Tests.csproj", "{1F536972-287B-4620-AB18-0224B9F50FF7}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,10 +14,6 @@ Global
 		{0BA7C23B-E2F7-AAD4-8C56-1CB0F2596E82}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0BA7C23B-E2F7-AAD4-8C56-1CB0F2596E82}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0BA7C23B-E2F7-AAD4-8C56-1CB0F2596E82}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F536972-287B-4620-AB18-0224B9F50FF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F536972-287B-4620-AB18-0224B9F50FF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1F536972-287B-4620-AB18-0224B9F50FF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F536972-287B-4620-AB18-0224B9F50FF7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
