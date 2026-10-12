@@ -140,6 +140,41 @@ login:
     password: "..."
 ```
 
+##### Per-user Jellyfin token
+
+A third login type, `JellyfinToken`, gives every user their own credentials without
+storing any in the plugin configuration. It is designed for a Seerr-compatible proxy
+that runs inside Jellyfin at `/Plugins/SeerrProxy` and accepts a Jellyfin access token
+as its API key (Wholphin sends it in the `X-Api-Key` header). It does **not** work
+against Seerr itself: Seerr's API key authentication does not accept Jellyfin tokens.
+
+```yaml
+serverUrl: https://jellyfin.example.com/Plugins/SeerrProxy
+login:
+  type: JellyfinToken
+```
+
+All clients get the same URL, but individual credentials: when Wholphin asks for the
+Seerr settings, the plugin answers with an ordinary `ApiKey` login holding the
+requesting user's own Jellyfin access token. No password is involved, so this also
+works for users who signed in with Quick Connect.
+
+A Jellyfin access token grants full access to the user's account (to the whole server,
+for an administrator), so the plugin only provides one when:
+
+- the request was made by a signed-in user. Server API keys are refused (403).
+- `serverUrl` is exactly this Jellyfin server's `/Plugins/SeerrProxy` endpoint, at the
+  address the client used to reach Jellyfin (including Jellyfin's base URL) or at the
+  server's published URL. Anything else is refused (403) and a warning is logged.
+
+Behind a reverse proxy, add the proxy to Jellyfin's Known Proxies so that Jellyfin sees
+the public scheme and host of requests, or set the public address in Published Server
+URIs. Both are in Jellyfin's networking settings.
+
+Wholphin keeps the token it received when setting up Seerr. If that token is revoked or
+rotated, for example by signing the device out of Jellyfin, the stored Seerr login stops
+working. The plugin does not refresh it.
+
 ## Acknowledgements
 
 - Credit to @kamilkosek: some code and inspiration are taken from their original idea for for a [Wholphin plugin](https://github.com/kamilkosek/jellyfin-plugin-wholphin)

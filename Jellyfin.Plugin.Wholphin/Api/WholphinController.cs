@@ -8,9 +8,11 @@ using ICU4N.Util;
 using Jellyfin.Plugin.Wholphin.Configuration;
 using Jellyfin.Plugin.Wholphin.Models;
 using MediaBrowser.Common.Api;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,12 +28,23 @@ namespace Jellyfin.Plugin.Wholphin.Api;
 [Route("wholphin")]
 public class WholphinController : ControllerBase
 {
+    // Jellyfin tokens are only provided for the SeerrProxy plugin's endpoint on this server
+    private const string SeerrProxyPath = "/Plugins/SeerrProxy";
+
     private readonly ILogger<WholphinController> logger;
     private readonly ILoggerFactory loggerFactory;
+    private readonly IAuthorizationContext authorizationContext;
+    private readonly IServerApplicationHost serverApplicationHost;
 
-    public WholphinController(ILoggerFactory loggerFactory)
+    public WholphinController(
+        ILoggerFactory loggerFactory,
+        IAuthorizationContext authorizationContext,
+        IServerApplicationHost serverApplicationHost
+    )
     {
         this.loggerFactory = loggerFactory;
+        this.authorizationContext = authorizationContext;
+        this.serverApplicationHost = serverApplicationHost;
         logger = loggerFactory.CreateLogger<WholphinController>();
     }
 
@@ -118,15 +131,101 @@ public class WholphinController : ControllerBase
     [Authorize]
     [HttpGet("seerrsettings")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<SeerrConfig> GetSeerrSettings()
+    public async Task<ActionResult<SeerrConfig>> GetSeerrSettings()
     {
         var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
         if (string.IsNullOrWhiteSpace(seerr.ServerUrl))
         {
             return NotFound();
         }
-        return seerr;
+        if (seerr.Login?.Type != SeerrLoginType.JellyfinToken)
+        {
+            return seerr;
+        }
+
+        // Only a token that Jellyfin validated for a user is handed out, never a server API key
+        var auth = await authorizationContext
+            .GetAuthorizationInfo(HttpContext)
+            .ConfigureAwait(false);
+        if (auth.IsApiKey)
+        {
+            return Forbid();
+        }
+        if (!auth.IsAuthenticated || auth.User is null || !auth.HasToken)
+        {
+            return Unauthorized();
+        }
+
+        var jellyfinUrls = GetJellyfinUrls();
+        if (!IsSeerrProxyUrl(seerr.ServerUrl, jellyfinUrls))
+        {
+            logger.LogWarning(
+                "Not providing a Jellyfin token for Seerr: serverUrl must be this server's SeerrProxy endpoint, e.g. {Expected}",
+                string.Join(
+                    " or ",
+                    jellyfinUrls.Select(url => url.TrimEnd('/') + SeerrProxyPath).Distinct()
+                )
+            );
+            return Forbid();
+        }
+
+        // The response holds the caller's own token, so it is built per request and never cached
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.Pragma = "no-cache";
+        return new SeerrConfig
+        {
+            Version = seerr.Version,
+            ServerUrl = seerr.ServerUrl,
+            Login = new SeerrLogin { Type = SeerrLoginType.ApiKey, ApiKey = auth.Token },
+        };
+    }
+
+    // This server's URL as the client reached it (Jellyfin has already applied its known-proxy
+    // forwarded headers and maps its base URL into PathBase), and as Jellyfin advertises itself
+    // to this client (published server URL)
+    private List<string> GetJellyfinUrls()
+    {
+        var urls = new List<string>();
+        if (Request.Host.HasValue)
+        {
+            urls.Add(
+                $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Request.PathBase.ToUriComponent()}"
+            );
+        }
+        urls.Add(serverApplicationHost.GetSmartApiUrl(Request));
+        return urls;
+    }
+
+    // Whether serverUrl is exactly the SeerrProxy endpoint under one of the Jellyfin URLs
+    private static bool IsSeerrProxyUrl(string serverUrl, IEnumerable<string> jellyfinUrls)
+    {
+        // Refuse anything a client's URL parser might read differently than System.Uri does,
+        // e.g. "\", user info, encoded dot segments ("%2e%2e") or embedded whitespace
+        if (
+            serverUrl.Any(c => c is '\\' or '@' or '%' || char.IsWhiteSpace(c) || char.IsControl(c))
+            || !Uri.TryCreate(serverUrl, UriKind.Absolute, out var target)
+            || (target.Scheme != Uri.UriSchemeHttp && target.Scheme != Uri.UriSchemeHttps)
+            || target.Query.Length > 0
+            || target.Fragment.Length > 0
+        )
+        {
+            return false;
+        }
+
+        return jellyfinUrls.Any(url =>
+            Uri.TryCreate(url, UriKind.Absolute, out var jellyfin)
+            && target.Scheme == jellyfin.Scheme
+            && string.Equals(target.IdnHost, jellyfin.IdnHost, StringComparison.OrdinalIgnoreCase)
+            && target.Port == jellyfin.Port
+            && string.Equals(
+                target.AbsolutePath.TrimEnd('/'),
+                jellyfin.AbsolutePath.TrimEnd('/') + SeerrProxyPath,
+                StringComparison.Ordinal
+            )
+        );
     }
 
     [HttpGet("config/seerr")]
