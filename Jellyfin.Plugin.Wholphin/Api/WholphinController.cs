@@ -26,156 +26,149 @@ namespace Jellyfin.Plugin.Wholphin.Api;
 [Route("wholphin")]
 public class WholphinController : ControllerBase
 {
+    private readonly ILogger<WholphinController> logger;
+    private readonly ILoggerFactory loggerFactory;
 
-  private readonly ILogger<WholphinController> logger;
-  private readonly ILoggerFactory loggerFactory;
-
-  public WholphinController(
-    ILoggerFactory loggerFactory
-  )
-  {
-    this.loggerFactory = loggerFactory;
-    logger = loggerFactory.CreateLogger<WholphinController>();
-  }
-
-  [AllowAnonymous]
-  [HttpGet("public")]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult Public()
-  {
-    // TODO return version?
-    return Ok();
-  }
-
-  [Authorize]
-  [HttpGet("homesettings")]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult<HomePageSettings> GetHomeSettings()
-  {
-    var config = WholphinPlugin.Instance!.Configuration;
-    var settings = config.HomeConfig.HomePageSettings;
-    if (settings != null)
+    public WholphinController(ILoggerFactory loggerFactory)
     {
-      // var options = new JsonSerializerOptions {
-      //   PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-      //   DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-      // };
-      // return new JsonResult(settings, options);
-      return settings;
+        this.loggerFactory = loggerFactory;
+        logger = loggerFactory.CreateLogger<WholphinController>();
     }
-    else
-    {
-      return null;
-    }
-  }
 
-  [Authorize]
-  [HttpGet("seerrsettings")]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  [ProducesResponseType(StatusCodes.Status404NotFound)]
-  public ActionResult<SeerrConfig> GetSeerrSettings()
-  {
-    var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
-    if (string.IsNullOrWhiteSpace(seerr.ServerUrl))
+    [AllowAnonymous]
+    [HttpGet("public")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult Public()
     {
-      return NotFound();
+        // TODO return version?
+        return Ok();
     }
-    return seerr;
-  }
 
-  [HttpGet("config")]
-  [Authorize(Policy = Policies.RequiresElevation)]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult GetConfig()
-  {
-    var config = WholphinPlugin.Instance!.Configuration;
-    return Ok(config);
-  }
+    [Authorize]
+    [HttpGet("homesettings")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<HomePageSettings> GetHomeSettings()
+    {
+        var config = WholphinPlugin.Instance!.Configuration;
+        var settings = config.HomeConfig.HomePageSettings;
+        if (settings != null)
+        {
+            // var options = new JsonSerializerOptions {
+            //   PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            //   DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            // };
+            // return new JsonResult(settings, options);
+            return settings;
+        }
+        else
+        {
+            return null;
+        }
+    }
 
-  [HttpGet("config/home")]
-  [Authorize(Policy = Policies.RequiresElevation)]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult<Response> GetHomeSettingsConfig()
-  {
-    var config = WholphinPlugin.Instance!.Configuration;
-    var settings = config.HomeConfig.HomePageSettings;
-    if (settings != null)
+    [HttpGet("config")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult GetConfig()
     {
-      var result = WholphinPlugin.YamlSerializer.Serialize(settings);
-      return new Response { Result = result };
+        var config = WholphinPlugin.Instance!.Configuration;
+        return Ok(config);
     }
-    else
-    {
-      return new Response { };
-    }
-  }
 
-  [HttpPost("config/home")]
-  [Authorize(Policy = Policies.RequiresElevation)]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  [ProducesResponseType(StatusCodes.Status400BadRequest)]
-  public ActionResult<Response> SaveHomeSettingsConfig(
-    [FromBody, Required] ConfigValue config
-  )
-  {
-    HomePageSettings p;
-    try
+    [HttpGet("config/home")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<Response> GetHomeSettingsConfig()
     {
-      p = WholphinPlugin.YamlDeserializer.Deserialize<HomePageSettings>(config.Value);
+        var config = WholphinPlugin.Instance!.Configuration;
+        var settings = config.HomeConfig.HomePageSettings;
+        if (settings != null)
+        {
+            var result = WholphinPlugin.YamlSerializer.Serialize(settings);
+            return new Response { Result = result };
+        }
+        else
+        {
+            return new Response { };
+        }
     }
-    catch (Exception e)
-    {
-      logger.LogError(e, "Error parsing");
-      return BadRequest(e.Data.ToString());
-    }
-    var toSave = WholphinPlugin.Instance!.Configuration;
-    toSave.HomeConfig.HomePageSettings = p;
-    WholphinPlugin.Instance.UpdateConfiguration(toSave);
-    return Ok();
-  }
 
-  [HttpGet("config/seerr")]
-  [Authorize(Policy = Policies.RequiresElevation)]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  public ActionResult<Response> GetSeerrSettingsConfig()
-  {
-    var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
-    var result = WholphinPlugin.YamlSerializer.Serialize(seerr);
-    return new Response { Result = result };
-  }
+    [HttpPost("config/home")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<Response> SaveHomeSettingsConfig([FromBody, Required] ConfigValue config)
+    {
+        HomePageSettings p;
+        try
+        {
+            p = WholphinPlugin.YamlDeserializer.Deserialize<HomePageSettings>(config.Value);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error parsing");
+            return BadRequest(e.Data.ToString());
+        }
+        var toSave = WholphinPlugin.Instance!.Configuration;
+        toSave.HomeConfig.HomePageSettings = p;
+        WholphinPlugin.Instance.UpdateConfiguration(toSave);
+        return Ok();
+    }
 
-  [HttpPost("config/seerr")]
-  [Authorize(Policy = Policies.RequiresElevation)]
-  [ProducesResponseType(StatusCodes.Status200OK)]
-  [ProducesResponseType(StatusCodes.Status400BadRequest)]
-  public ActionResult<Response> SaveSeerrSettingsConfig(
-    [FromBody, Required] ConfigValue config
-  )
-  {
-    SeerrConfig s;
-    try
+    [Authorize]
+    [HttpGet("seerrsettings")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<SeerrConfig> GetSeerrSettings()
     {
-      s = WholphinPlugin.YamlDeserializer.Deserialize<SeerrConfig>(config.Value);
+        var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
+        if (string.IsNullOrWhiteSpace(seerr.ServerUrl))
+        {
+            return NotFound();
+        }
+        return seerr;
     }
-    catch (Exception e)
+
+    [HttpGet("config/seerr")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<Response> GetSeerrSettingsConfig()
     {
-      logger.LogError(e, "Error parsing seerr settings");
-      return BadRequest(e.Message);
+        var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
+        var result = WholphinPlugin.YamlSerializer.Serialize(seerr);
+        return new Response { Result = result };
     }
-    var toSave = WholphinPlugin.Instance!.Configuration;
-    toSave.SeerrConfig = s;
-    WholphinPlugin.Instance.UpdateConfiguration(toSave);
-    return Ok();
-  }
+
+    [HttpPost("config/seerr")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<Response> SaveSeerrSettingsConfig([FromBody, Required] ConfigValue config)
+    {
+        SeerrConfig s;
+        try
+        {
+            s = WholphinPlugin.YamlDeserializer.Deserialize<SeerrConfig>(config.Value);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Error parsing seerr settings");
+            return BadRequest(e.Message);
+        }
+        var toSave = WholphinPlugin.Instance!.Configuration;
+        toSave.SeerrConfig = s;
+        WholphinPlugin.Instance.UpdateConfiguration(toSave);
+        return Ok();
+    }
 }
 
 public class ConfigValue
 {
-  public string Value { get; set; } = default!;
+    public string Value { get; set; } = default!;
 }
 
 public class Response
 {
-  public string? Error { get; set; } = null;
-  public string? Result { get; set; } = null!;
+    public string? Error { get; set; } = null;
+    public string? Result { get; set; } = null!;
 }
