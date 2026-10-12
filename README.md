@@ -144,9 +144,10 @@ login:
 
 A third login type, `JellyfinToken`, gives every user their own credentials without
 storing any in the plugin configuration. It is designed for a Seerr-compatible proxy
-that runs inside Jellyfin at `/Plugins/SeerrProxy` and accepts a Jellyfin access token
-as its API key (Wholphin sends it in the `X-Api-Key` header). It does **not** work
-against Seerr itself: Seerr's API key authentication does not accept Jellyfin tokens.
+that runs inside Jellyfin, such as a plugin serving `/Plugins/SeerrProxy`, and accepts
+a Jellyfin access token as its API key (Wholphin sends it in the `X-Api-Key` header).
+It does **not** work against Seerr itself: Seerr's API key authentication does not
+accept Jellyfin tokens.
 
 ```yaml
 serverUrl: https://jellyfin.example.com/Plugins/SeerrProxy
@@ -163,9 +164,14 @@ A Jellyfin access token grants full access to the user's account (to the whole s
 for an administrator), so the plugin only provides one when:
 
 - the request was made by a signed-in user. Server API keys are refused (403).
-- `serverUrl` is exactly this Jellyfin server's `/Plugins/SeerrProxy` endpoint, at the
-  address the client used to reach Jellyfin (including Jellyfin's base URL) or at the
-  server's published URL. Anything else is refused (403) and a warning is logged.
+- `serverUrl` points at this Jellyfin server: it starts with the address the client used
+  to reach Jellyfin (including Jellyfin's base URL) or with the server's published URL.
+  The path after that is up to you. Anything else is refused (403) and a warning is
+  logged.
+
+The plugin can't see how your reverse proxy routes paths. If Jellyfin is served from the
+root of a host that also serves other apps under some paths, make sure `serverUrl`
+doesn't point at one of them.
 
 Behind a reverse proxy, add the proxy to Jellyfin's Known Proxies so that Jellyfin sees
 the public scheme and host of requests, or set the public address in Published Server

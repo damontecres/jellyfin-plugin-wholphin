@@ -149,10 +149,12 @@ public class SeerrSettingsTests
     [Theory]
     [InlineData(ProxyUrl)]
     [InlineData(ProxyUrl + "/")]
+    [InlineData(JellyfinUrl + "/Plugins/SomeOtherProxy")] // any path on this server
+    [InlineData(JellyfinUrl + "/plugins/seerrproxy/api")]
     [InlineData("https://JELLYFIN.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com:443/Plugins/SeerrProxy")]
     [InlineData(LanUrl + "/Plugins/SeerrProxy")] // the URL Jellyfin advertises to this client
-    public async Task JellyfinToken_ThisServersSeerrProxyEndpoint_IsTrusted(string serverUrl)
+    public async Task JellyfinToken_UrlOnThisServer_IsTrusted(string serverUrl)
     {
         Configure(JellyfinTokenConfig(serverUrl));
 
@@ -166,20 +168,16 @@ public class SeerrSettingsTests
     [InlineData("https://seerr.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com.evil.example/Plugins/SeerrProxy")]
     [InlineData("http://jellyfin.example.com/Plugins/SeerrProxy")] // downgraded to plain http
+    [InlineData("http://jellyfin.example.com:443/Plugins/SeerrProxy")] // even on the same port
     [InlineData("https://jellyfin.example.com:8443/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com/seerr")] // another app behind the same proxy
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxyEvil")]
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy/api/v1")]
-    [InlineData("https://jellyfin.example.com/plugins/seerrproxy")]
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy/../../seerr")]
     [InlineData("https://jellyfin.example.com@evil.example/Plugins/SeerrProxy")]
     [InlineData("https://evil.example\\@jellyfin.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy?next=https://evil.example")]
     [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy#fragment")]
     [InlineData("/Plugins/SeerrProxy")] // parses as file:///Plugins/SeerrProxy on Unix
     [InlineData("ftp://jellyfin.example.com/Plugins/SeerrProxy")]
-    // System.Uri reads these as the endpoint, but they are refused rather than relying on
-    // every client's URL parser to agree
+    // System.Uri reads these as being on this server, but they are refused rather than relying
+    // on every client's URL parser to agree
     [InlineData("https://jellyfin.example.com/x/%2e%2e/Plugins/SeerrProxy")]
     [InlineData("https://user@jellyfin.example.com/Plugins/SeerrProxy")]
     [InlineData(" https://jellyfin.example.com/Plugins/SeerrProxy")]
@@ -192,19 +190,21 @@ public class SeerrSettingsTests
 
         Assert.IsType<ForbidResult>(result.Result);
         Assert.Null(result.Value);
-        Assert.Contains(logs.Messages, m => m.Contains(ProxyUrl, StringComparison.Ordinal));
+        Assert.Contains(logs.Messages, m => m.Contains(JellyfinUrl, StringComparison.Ordinal));
         AssertStoredConfigUnchanged(stored);
         AssertTokensNeverLogged();
     }
 
     [Theory]
     [InlineData(JellyfinUrl + "/jellyfin/Plugins/SeerrProxy", true)]
-    [InlineData(JellyfinUrl + "/Plugins/SeerrProxy", false)] // outside Jellyfin's base URL
-    [InlineData(JellyfinUrl + "/other/Plugins/SeerrProxy", false)]
-    public async Task JellyfinToken_EndpointMustBeUnderJellyfinsBaseUrl(
-        string serverUrl,
-        bool trusted
-    )
+    [InlineData(JellyfinUrl + "/jellyfin/Plugins/SomeOtherProxy", true)]
+    // Outside Jellyfin's base URL, where a reverse proxy may route to another app
+    [InlineData(JellyfinUrl + "/Plugins/SeerrProxy", false)]
+    [InlineData(JellyfinUrl + "/seerr", false)]
+    [InlineData(JellyfinUrl + "/jellyfin-other/Plugins/SeerrProxy", false)]
+    [InlineData(JellyfinUrl + "/JELLYFIN/Plugins/SeerrProxy", false)]
+    [InlineData(JellyfinUrl + "/jellyfin/../seerr", false)] // resolves to /seerr
+    public async Task JellyfinToken_UrlMustBeUnderJellyfinsBaseUrl(string serverUrl, bool trusted)
     {
         Configure(JellyfinTokenConfig(serverUrl));
 
