@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using System.Xml.Serialization;
@@ -18,19 +19,10 @@ using NSubstitute;
 
 namespace Jellyfin.Plugin.Wholphin.Tests;
 
-/// <summary>
-/// Tests for <c>GET /wholphin/seerrsettings</c> and the admin Seerr config endpoints.
-/// </summary>
-/// <remarks>
-/// The controller reads its configuration through the process-wide <c>WholphinPlugin.Instance</c>,
-/// so every test that touches it lives in this class: xUnit runs one class's tests sequentially.
-/// </remarks>
 public class SeerrSettingsTests
 {
     private const string JellyfinUrl = "https://jellyfin.example.com";
     private const string ProxyUrl = JellyfinUrl + "/Plugins/SeerrProxy";
-
-    // What Jellyfin advertises to the client when no published server URL is configured
     private const string LanUrl = "http://192.168.1.10:8096";
 
     private const string AliceToken = "alice-token";
@@ -50,9 +42,8 @@ public class SeerrSettingsTests
         authContext.AddSession(OrphanToken, null);
         authContext.AddApiKey(ServerApiKey);
 
-        serverHost.GetSmartApiUrl(Arg.Any<HttpRequest>()).Returns(LanUrl);
+        serverHost.GetSmartApiUrl(Arg.Any<IPAddress>()).Returns(LanUrl);
 
-        // Jellyfin loads plugin configuration lazily through IXmlSerializer
         var applicationPaths = Substitute.For<IApplicationPaths>();
         applicationPaths.PluginConfigurationsPath.Returns(
             Path.Combine(Path.GetTempPath(), "wholphin-plugin-tests")
@@ -108,9 +99,9 @@ public class SeerrSettingsTests
     }
 
     [Theory]
-    [InlineData(null)] // no token at all
-    [InlineData("revoked-token")] // unknown to Jellyfin
-    [InlineData(OrphanToken)] // session whose user no longer exists
+    [InlineData(null)]
+    [InlineData("revoked-token")]
+    [InlineData(OrphanToken)]
     public async Task JellyfinToken_WithoutValidUserSession_IsUnauthorized(string? token)
     {
         Configure(JellyfinTokenConfig());
@@ -136,7 +127,6 @@ public class SeerrSettingsTests
     [Fact]
     public void SeerrSettings_StillRequiresAnAuthenticatedCaller()
     {
-        // Rejecting unauthenticated requests is left to Jellyfin's [Authorize] handling, as before
         var method = typeof(WholphinController).GetMethod(
             nameof(WholphinController.GetSeerrSettings)
         )!;
@@ -149,11 +139,11 @@ public class SeerrSettingsTests
     [Theory]
     [InlineData(ProxyUrl)]
     [InlineData(ProxyUrl + "/")]
-    [InlineData(JellyfinUrl + "/Plugins/SomeOtherProxy")] // any path on this server
+    [InlineData(JellyfinUrl + "/Plugins/SomeOtherProxy")]
     [InlineData(JellyfinUrl + "/plugins/seerrproxy/api")]
     [InlineData("https://JELLYFIN.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com:443/Plugins/SeerrProxy")]
-    [InlineData(LanUrl + "/Plugins/SeerrProxy")] // the URL Jellyfin advertises to this client
+    [InlineData(LanUrl + "/Plugins/SeerrProxy")]
     public async Task JellyfinToken_UrlOnThisServer_IsTrusted(string serverUrl)
     {
         Configure(JellyfinTokenConfig(serverUrl));
@@ -164,20 +154,18 @@ public class SeerrSettingsTests
     }
 
     [Theory]
-    [InlineData("https://seerr.example.com")] // Seerr itself
+    [InlineData("https://seerr.example.com")]
     [InlineData("https://seerr.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com.evil.example/Plugins/SeerrProxy")]
-    [InlineData("http://jellyfin.example.com/Plugins/SeerrProxy")] // downgraded to plain http
-    [InlineData("http://jellyfin.example.com:443/Plugins/SeerrProxy")] // even on the same port
+    [InlineData("http://jellyfin.example.com/Plugins/SeerrProxy")]
+    [InlineData("http://jellyfin.example.com:443/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com:8443/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com@evil.example/Plugins/SeerrProxy")]
     [InlineData("https://evil.example\\@jellyfin.example.com/Plugins/SeerrProxy")]
     [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy?next=https://evil.example")]
     [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy#fragment")]
-    [InlineData("/Plugins/SeerrProxy")] // parses as file:///Plugins/SeerrProxy on Unix
+    [InlineData("/Plugins/SeerrProxy")]
     [InlineData("ftp://jellyfin.example.com/Plugins/SeerrProxy")]
-    // System.Uri reads these as being on this server, but they are refused rather than relying
-    // on every client's URL parser to agree
     [InlineData("https://jellyfin.example.com/x/%2e%2e/Plugins/SeerrProxy")]
     [InlineData("https://user@jellyfin.example.com/Plugins/SeerrProxy")]
     [InlineData(" https://jellyfin.example.com/Plugins/SeerrProxy")]
@@ -198,12 +186,11 @@ public class SeerrSettingsTests
     [Theory]
     [InlineData(JellyfinUrl + "/jellyfin/Plugins/SeerrProxy", true)]
     [InlineData(JellyfinUrl + "/jellyfin/Plugins/SomeOtherProxy", true)]
-    // Outside Jellyfin's base URL, where a reverse proxy may route to another app
     [InlineData(JellyfinUrl + "/Plugins/SeerrProxy", false)]
     [InlineData(JellyfinUrl + "/seerr", false)]
     [InlineData(JellyfinUrl + "/jellyfin-other/Plugins/SeerrProxy", false)]
     [InlineData(JellyfinUrl + "/JELLYFIN/Plugins/SeerrProxy", false)]
-    [InlineData(JellyfinUrl + "/jellyfin/../seerr", false)] // resolves to /seerr
+    [InlineData(JellyfinUrl + "/jellyfin/../seerr", false)]
     public async Task JellyfinToken_UrlMustBeUnderJellyfinsBaseUrl(string serverUrl, bool trusted)
     {
         Configure(JellyfinTokenConfig(serverUrl));
@@ -214,14 +201,14 @@ public class SeerrSettingsTests
     }
 
     [Theory]
-    [InlineData(JellyfinUrl, true)] // admin published the public URL
-    [InlineData(LanUrl, false)] // nothing ties the public hostname to this server
+    [InlineData(JellyfinUrl, true)]
+    [InlineData(LanUrl, false)]
     public async Task JellyfinToken_LanClientCanUseThePublishedServerUrl(
         string publishedUrl,
         bool trusted
     )
     {
-        serverHost.GetSmartApiUrl(Arg.Any<HttpRequest>()).Returns(publishedUrl);
+        serverHost.GetSmartApiUrl(Arg.Any<IPAddress>()).Returns(publishedUrl);
         Configure(JellyfinTokenConfig());
 
         var result = await Controller(AliceToken, LanUrl).GetSeerrSettings();
@@ -236,7 +223,6 @@ public class SeerrSettingsTests
 
         var response = (await Controller(AliceToken).GetSeerrSettings()).Value;
 
-        // Wholphin decodes "login" by its "type" and only knows None, ApiKey and Local
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(response));
         Assert.Equal(1, json.RootElement.GetProperty("version").GetInt32());
         Assert.Equal(ProxyUrl, json.RootElement.GetProperty("serverUrl").GetString());
@@ -246,7 +232,7 @@ public class SeerrSettingsTests
     }
 
     [Theory]
-    [InlineData(null)] // URL only
+    [InlineData(null)]
     [InlineData(SeerrLoginType.None)]
     [InlineData(SeerrLoginType.ApiKey)]
     [InlineData(SeerrLoginType.Local)]
@@ -255,7 +241,6 @@ public class SeerrSettingsTests
         var stored = Configure(
             new SeerrConfig
             {
-                // Not this server's SeerrProxy endpoint, which these modes never required
                 ServerUrl = "https://seerr.example.com",
                 Login = type switch
                 {
@@ -349,7 +334,6 @@ public class SeerrSettingsTests
     [Fact]
     public void XmlPersistence_RoundTripsTheMarker()
     {
-        // Jellyfin stores plugin configuration with System.Xml.Serialization
         var serializer = new XmlSerializer(typeof(PluginConfiguration));
         using var writer = new StringWriter();
         serializer.Serialize(
@@ -377,7 +361,6 @@ public class SeerrSettingsTests
         return seerr;
     }
 
-    // A request that reached Jellyfin at requestUrl (after Jellyfin's own proxy and base URL handling)
     private WholphinController Controller(string? token, string requestUrl = JellyfinUrl)
     {
         var uri = new Uri(requestUrl);
@@ -424,10 +407,6 @@ public class SeerrSettingsTests
         );
     }
 
-    /// <summary>
-    /// Validates the request's token against known sessions and API keys, the way Jellyfin's
-    /// AuthorizationContext does against its database.
-    /// </summary>
     private sealed class FakeAuthorizationContext : IAuthorizationContext
     {
         private const string Prefix = "MediaBrowser Token=\"";

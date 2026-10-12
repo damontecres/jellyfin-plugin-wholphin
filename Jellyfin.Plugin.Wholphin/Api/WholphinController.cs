@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ICU4N.Util;
@@ -154,7 +155,6 @@ public class WholphinController : ControllerBase
             return seerr;
         }
 
-        // Only a token that Jellyfin validated for a user is handed out, never a server API key
         var auth = await authorizationContext
             .GetAuthorizationInfo(HttpContext)
             .ConfigureAwait(false);
@@ -177,7 +177,6 @@ public class WholphinController : ControllerBase
             return Forbid();
         }
 
-        // The response holds the caller's own token, so it is built per request and never cached
         Response.Headers.CacheControl = "no-store";
         Response.Headers.Pragma = "no-cache";
         return new SeerrConfig
@@ -188,9 +187,6 @@ public class WholphinController : ControllerBase
         };
     }
 
-    // This server's URL as the client reached it (Jellyfin has already applied its known-proxy
-    // forwarded headers and maps its base URL into PathBase), and as Jellyfin advertises itself
-    // to this client (published server URL)
     private List<string> GetJellyfinUrls()
     {
         var urls = new List<string>();
@@ -200,16 +196,16 @@ public class WholphinController : ControllerBase
                 $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Request.PathBase.ToUriComponent()}"
             );
         }
-        urls.Add(serverApplicationHost.GetSmartApiUrl(Request));
+        urls.Add(
+            serverApplicationHost.GetSmartApiUrl(
+                HttpContext.Connection.RemoteIpAddress ?? IPAddress.Loopback
+            )
+        );
         return urls;
     }
 
-    // Whether serverUrl is on this Jellyfin server: the same scheme, host and port as one of the
-    // Jellyfin URLs, and under its base URL so that a reverse proxy routes it to Jellyfin
     private static bool IsOnJellyfinServer(string serverUrl, IEnumerable<string> jellyfinUrls)
     {
-        // Refuse anything a client's URL parser might read differently than System.Uri does,
-        // e.g. "\", user info, encoded dot segments ("%2e%2e") or embedded whitespace
         if (
             serverUrl.Any(c => c is '\\' or '@' or '%' || char.IsWhiteSpace(c) || char.IsControl(c))
             || !Uri.TryCreate(serverUrl, UriKind.Absolute, out var target)

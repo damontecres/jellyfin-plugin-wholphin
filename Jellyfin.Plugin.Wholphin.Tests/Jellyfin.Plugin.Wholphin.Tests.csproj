@@ -8,13 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The plugin excludes Jellyfin's runtime assets (the server provides them); tests need them -->
     <PackageReference Include="Jellyfin.Controller" Version="12.1" />
     <PackageReference Include="Jellyfin.Model" Version="12.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="NSubstitute" Version="6.2.0" />
-    <!-- xunit.v3.mtp-off, not xunit.v3: the plain package turns on Microsoft Testing Platform,
-         which VSTest-mode `dotnet test` on the .NET 10 SDK refuses to run -->
     <PackageReference Include="xunit.v3.mtp-off" Version="4.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
   </ItemGroup>
