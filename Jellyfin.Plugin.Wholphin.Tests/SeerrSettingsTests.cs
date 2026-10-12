@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using System.Xml.Serialization;
@@ -8,22 +6,19 @@ using Jellyfin.Plugin.Wholphin.Api;
 using Jellyfin.Plugin.Wholphin.Configuration;
 using Jellyfin.Plugin.Wholphin.Models;
 using MediaBrowser.Common.Configuration;
-using MediaBrowser.Controller;
 using MediaBrowser.Controller.Net;
 using MediaBrowser.Model.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace Jellyfin.Plugin.Wholphin.Tests;
 
 public class SeerrSettingsTests
 {
-    private const string JellyfinUrl = "https://jellyfin.example.com";
-    private const string ProxyUrl = JellyfinUrl + "/Plugins/SeerrProxy";
-    private const string LanUrl = "http://192.168.1.10:8096";
+    private const string ProxyUrl = "https://jellyfin.example.com/Plugins/SeerrProxy";
 
     private const string AliceToken = "alice-token";
     private const string BobToken = "bob-token";
@@ -31,8 +26,6 @@ public class SeerrSettingsTests
     private const string ServerApiKey = "server-api-key";
 
     private readonly FakeAuthorizationContext authContext = new();
-    private readonly IServerApplicationHost serverHost = Substitute.For<IServerApplicationHost>();
-    private readonly CapturingLogger logs = new();
     private readonly WholphinPlugin plugin;
 
     public SeerrSettingsTests()
@@ -41,8 +34,6 @@ public class SeerrSettingsTests
         authContext.AddSession(BobToken, new User("bob", "provider", "reset"));
         authContext.AddSession(OrphanToken, null);
         authContext.AddApiKey(ServerApiKey);
-
-        serverHost.GetSmartApiUrl(Arg.Any<IPAddress>()).Returns(LanUrl);
 
         var applicationPaths = Substitute.For<IApplicationPaths>();
         applicationPaths.PluginConfigurationsPath.Returns(
@@ -64,12 +55,11 @@ public class SeerrSettingsTests
         var alice = (await aliceController.GetSeerrSettings()).Value;
         var bob = (await Controller(BobToken).GetSeerrSettings()).Value;
 
-        AssertApiKeyLogin(alice, ProxyUrl, AliceToken);
-        AssertApiKeyLogin(bob, ProxyUrl, BobToken);
+        AssertApiKeyLogin(alice, AliceToken);
+        AssertApiKeyLogin(bob, BobToken);
         Assert.Equal("no-store", aliceController.Response.Headers.CacheControl);
         Assert.Equal("no-cache", aliceController.Response.Headers.Pragma);
         AssertStoredConfigUnchanged(stored);
-        AssertTokensNeverLogged();
     }
 
     [Fact]
@@ -92,7 +82,7 @@ public class SeerrSettingsTests
 
         foreach (var (token, response) in responses)
         {
-            AssertApiKeyLogin(response, ProxyUrl, token);
+            AssertApiKeyLogin(response, token);
         }
         Assert.Equal(responses.Length, responses.Select(r => r.Value).Distinct().Count());
         AssertStoredConfigUnchanged(stored);
@@ -134,86 +124,6 @@ public class SeerrSettingsTests
         var authorize = Assert.Single(method.GetCustomAttributes<AuthorizeAttribute>());
         Assert.Null(authorize.Policy);
         Assert.Empty(method.GetCustomAttributes<AllowAnonymousAttribute>());
-    }
-
-    [Theory]
-    [InlineData(ProxyUrl)]
-    [InlineData(ProxyUrl + "/")]
-    [InlineData(JellyfinUrl + "/Plugins/SomeOtherProxy")]
-    [InlineData(JellyfinUrl + "/plugins/seerrproxy/api")]
-    [InlineData("https://JELLYFIN.example.com/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com:443/Plugins/SeerrProxy")]
-    [InlineData(LanUrl + "/Plugins/SeerrProxy")]
-    public async Task JellyfinToken_UrlOnThisServer_IsTrusted(string serverUrl)
-    {
-        Configure(JellyfinTokenConfig(serverUrl));
-
-        var response = (await Controller(AliceToken).GetSeerrSettings()).Value;
-
-        AssertApiKeyLogin(response, serverUrl, AliceToken);
-    }
-
-    [Theory]
-    [InlineData("https://seerr.example.com")]
-    [InlineData("https://seerr.example.com/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com.evil.example/Plugins/SeerrProxy")]
-    [InlineData("http://jellyfin.example.com/Plugins/SeerrProxy")]
-    [InlineData("http://jellyfin.example.com:443/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com:8443/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com@evil.example/Plugins/SeerrProxy")]
-    [InlineData("https://evil.example\\@jellyfin.example.com/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy?next=https://evil.example")]
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy#fragment")]
-    [InlineData("/Plugins/SeerrProxy")]
-    [InlineData("ftp://jellyfin.example.com/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com/x/%2e%2e/Plugins/SeerrProxy")]
-    [InlineData("https://user@jellyfin.example.com/Plugins/SeerrProxy")]
-    [InlineData(" https://jellyfin.example.com/Plugins/SeerrProxy")]
-    [InlineData("https://jellyfin.example.com/Plugins/SeerrProxy\n")]
-    public async Task JellyfinToken_UntrustedServerUrl_IsForbidden(string serverUrl)
-    {
-        var stored = Configure(JellyfinTokenConfig(serverUrl));
-
-        var result = await Controller(AliceToken).GetSeerrSettings();
-
-        Assert.IsType<ForbidResult>(result.Result);
-        Assert.Null(result.Value);
-        Assert.Contains(logs.Messages, m => m.Contains(JellyfinUrl, StringComparison.Ordinal));
-        AssertStoredConfigUnchanged(stored);
-        AssertTokensNeverLogged();
-    }
-
-    [Theory]
-    [InlineData(JellyfinUrl + "/jellyfin/Plugins/SeerrProxy", true)]
-    [InlineData(JellyfinUrl + "/jellyfin/Plugins/SomeOtherProxy", true)]
-    [InlineData(JellyfinUrl + "/Plugins/SeerrProxy", false)]
-    [InlineData(JellyfinUrl + "/seerr", false)]
-    [InlineData(JellyfinUrl + "/jellyfin-other/Plugins/SeerrProxy", false)]
-    [InlineData(JellyfinUrl + "/JELLYFIN/Plugins/SeerrProxy", false)]
-    [InlineData(JellyfinUrl + "/jellyfin/../seerr", false)]
-    public async Task JellyfinToken_UrlMustBeUnderJellyfinsBaseUrl(string serverUrl, bool trusted)
-    {
-        Configure(JellyfinTokenConfig(serverUrl));
-
-        var result = await Controller(AliceToken, JellyfinUrl + "/jellyfin").GetSeerrSettings();
-
-        Assert.Equal(trusted ? AliceToken : null, result.Value?.Login?.ApiKey);
-    }
-
-    [Theory]
-    [InlineData(JellyfinUrl, true)]
-    [InlineData(LanUrl, false)]
-    public async Task JellyfinToken_LanClientCanUseThePublishedServerUrl(
-        string publishedUrl,
-        bool trusted
-    )
-    {
-        serverHost.GetSmartApiUrl(Arg.Any<IPAddress>()).Returns(publishedUrl);
-        Configure(JellyfinTokenConfig());
-
-        var result = await Controller(AliceToken, LanUrl).GetSeerrSettings();
-
-        Assert.Equal(trusted ? AliceToken : null, result.Value?.Login?.ApiKey);
     }
 
     [Fact]
@@ -348,10 +258,10 @@ public class SeerrSettingsTests
         Assert.Null(loaded.SeerrConfig.Login?.ApiKey);
     }
 
-    private static SeerrConfig JellyfinTokenConfig(string serverUrl = ProxyUrl) =>
+    private static SeerrConfig JellyfinTokenConfig() =>
         new()
         {
-            ServerUrl = serverUrl,
+            ServerUrl = ProxyUrl,
             Login = new SeerrLogin { Type = SeerrLoginType.JellyfinToken },
         };
 
@@ -361,29 +271,25 @@ public class SeerrSettingsTests
         return seerr;
     }
 
-    private WholphinController Controller(string? token, string requestUrl = JellyfinUrl)
+    private WholphinController Controller(string? token)
     {
-        var uri = new Uri(requestUrl);
         var httpContext = new DefaultHttpContext();
-        httpContext.Request.Scheme = uri.Scheme;
-        httpContext.Request.Host = new HostString(uri.Authority);
-        httpContext.Request.PathBase = new PathString(uri.AbsolutePath.TrimEnd('/'));
         if (token is not null)
         {
             httpContext.Request.Headers.Authorization = $"MediaBrowser Token=\"{token}\"";
         }
 
-        return new WholphinController(new CapturingLoggerFactory(logs), authContext, serverHost)
+        return new WholphinController(NullLoggerFactory.Instance, authContext)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
     }
 
-    private static void AssertApiKeyLogin(SeerrConfig? response, string serverUrl, string token)
+    private static void AssertApiKeyLogin(SeerrConfig? response, string token)
     {
         Assert.NotNull(response);
         Assert.Equal(1, response.Version);
-        Assert.Equal(serverUrl, response.ServerUrl);
+        Assert.Equal(ProxyUrl, response.ServerUrl);
         Assert.Equal(SeerrLoginType.ApiKey, response.Login?.Type);
         Assert.Equal(token, response.Login?.ApiKey);
         Assert.Null(response.Login?.Local);
@@ -395,16 +301,6 @@ public class SeerrSettingsTests
         Assert.Equal(SeerrLoginType.JellyfinToken, stored.Login?.Type);
         Assert.Null(stored.Login?.ApiKey);
         Assert.Null(stored.Login?.Local);
-    }
-
-    private void AssertTokensNeverLogged()
-    {
-        Assert.DoesNotContain(
-            logs.Messages,
-            m =>
-                m.Contains(AliceToken, StringComparison.Ordinal)
-                || m.Contains(BobToken, StringComparison.Ordinal)
-        );
     }
 
     private sealed class FakeAuthorizationContext : IAuthorizationContext
@@ -444,32 +340,5 @@ public class SeerrSettingsTests
             }
             return Task.FromResult(info);
         }
-    }
-
-    private sealed class CapturingLogger : ILogger
-    {
-        public ConcurrentQueue<string> Messages { get; } = new();
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter
-        ) => Messages.Enqueue(formatter(state, exception));
-    }
-
-    private sealed class CapturingLoggerFactory(CapturingLogger logger) : ILoggerFactory
-    {
-        public ILogger CreateLogger(string categoryName) => logger;
-
-        public void AddProvider(ILoggerProvider provider) { }
-
-        public void Dispose() { }
     }
 }

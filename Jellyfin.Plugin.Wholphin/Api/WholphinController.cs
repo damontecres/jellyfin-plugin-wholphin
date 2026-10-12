@@ -2,14 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ICU4N.Util;
 using Jellyfin.Plugin.Wholphin.Configuration;
 using Jellyfin.Plugin.Wholphin.Models;
 using MediaBrowser.Common.Api;
-using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Library;
@@ -32,23 +30,19 @@ public class WholphinController : ControllerBase
     private readonly ILogger<WholphinController> logger;
     private readonly ILoggerFactory loggerFactory;
     private readonly IAuthorizationContext authorizationContext;
-    private readonly IServerApplicationHost serverApplicationHost;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WholphinController"/> class.
     /// </summary>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="authorizationContext">Identifies the caller of a request.</param>
-    /// <param name="serverApplicationHost">Provides the URL Jellyfin publishes to clients.</param>
     public WholphinController(
         ILoggerFactory loggerFactory,
-        IAuthorizationContext authorizationContext,
-        IServerApplicationHost serverApplicationHost
+        IAuthorizationContext authorizationContext
     )
     {
         this.loggerFactory = loggerFactory;
         this.authorizationContext = authorizationContext;
-        this.serverApplicationHost = serverApplicationHost;
         logger = loggerFactory.CreateLogger<WholphinController>();
     }
 
@@ -167,16 +161,6 @@ public class WholphinController : ControllerBase
             return Unauthorized();
         }
 
-        var jellyfinUrls = GetJellyfinUrls();
-        if (!IsOnJellyfinServer(seerr.ServerUrl, jellyfinUrls))
-        {
-            logger.LogWarning(
-                "Not providing a Jellyfin token for Seerr: serverUrl must point at this Jellyfin server ({JellyfinUrls})",
-                string.Join(" or ", jellyfinUrls.Distinct())
-            );
-            return Forbid();
-        }
-
         Response.Headers.CacheControl = "no-store";
         Response.Headers.Pragma = "no-cache";
         return new SeerrConfig
@@ -185,48 +169,6 @@ public class WholphinController : ControllerBase
             ServerUrl = seerr.ServerUrl,
             Login = new SeerrLogin { Type = SeerrLoginType.ApiKey, ApiKey = auth.Token },
         };
-    }
-
-    private List<string> GetJellyfinUrls()
-    {
-        var urls = new List<string>();
-        if (Request.Host.HasValue)
-        {
-            urls.Add(
-                $"{Request.Scheme}://{Request.Host.ToUriComponent()}{Request.PathBase.ToUriComponent()}"
-            );
-        }
-        urls.Add(
-            serverApplicationHost.GetSmartApiUrl(
-                HttpContext.Connection.RemoteIpAddress ?? IPAddress.Loopback
-            )
-        );
-        return urls;
-    }
-
-    private static bool IsOnJellyfinServer(string serverUrl, IEnumerable<string> jellyfinUrls)
-    {
-        if (
-            serverUrl.Any(c => c is '\\' or '@' or '%' || char.IsWhiteSpace(c) || char.IsControl(c))
-            || !Uri.TryCreate(serverUrl, UriKind.Absolute, out var target)
-            || (target.Scheme != Uri.UriSchemeHttp && target.Scheme != Uri.UriSchemeHttps)
-            || target.Query.Length > 0
-            || target.Fragment.Length > 0
-        )
-        {
-            return false;
-        }
-
-        return jellyfinUrls.Any(url =>
-            Uri.TryCreate(url, UriKind.Absolute, out var jellyfin)
-            && target.Scheme == jellyfin.Scheme
-            && string.Equals(target.IdnHost, jellyfin.IdnHost, StringComparison.OrdinalIgnoreCase)
-            && target.Port == jellyfin.Port
-            && (target.AbsolutePath + "/").StartsWith(
-                jellyfin.AbsolutePath.TrimEnd('/') + "/",
-                StringComparison.Ordinal
-            )
-        );
     }
 
     [HttpGet("config/seerr")]
