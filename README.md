@@ -60,9 +60,8 @@ HomeConfig:
         sort:
           sort: SortName
           direction: Ascending
-# Seerr config, not fully implemented yet!
-SeerrConfig: {}
-
+SeerrConfig:
+  serverUrl: https://seerr.example.com
 ```
 
 #### Home page rows
@@ -116,6 +115,29 @@ Sample YAML for home page rows
     - key: X-Trace
       value: wholphin
 
+```
+
+#### Seerr config
+
+When set, Wholphin will automatically configure its Seerr connection on first
+login using these values. If `login` is omitted, only the URL is pushed and the
+user supplies authentication themselves.
+
+Two login types are supported when credentials are provided:
+
+```yaml
+# 1) API key — same login for everyone, no Seerr account needed per user
+serverUrl: https://seerr.example.com
+login:
+  type: ApiKey
+  apiKey: "<seerr-api-key>"
+# 2) Local Seerr account — shared local Seerr login for everyone
+serverUrl: https://seerr.example.com
+login:
+  type: Local
+  local:
+    username: "household@example.com"
+    password: "..."
 ```
 
 ## Acknowledgements
