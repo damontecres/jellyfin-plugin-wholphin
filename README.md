@@ -10,7 +10,7 @@ This plugin allows for the server admin to pre-config the home page and provide 
 Please note: this plugin is not required to use Wholphin!
 
 > [!NOTE]
-> Using this plugin currently requires using this [develop build of Wholphin](https://github.com/damontecres/Wholphin/pull/1384).
+> Wholphin `v1.1.0` or newer is required to make use of this plugin
 
 ## Installation
 
