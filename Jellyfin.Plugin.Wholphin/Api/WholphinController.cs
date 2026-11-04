@@ -11,6 +11,7 @@ using MediaBrowser.Common.Api;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -28,10 +29,20 @@ public class WholphinController : ControllerBase
 {
     private readonly ILogger<WholphinController> logger;
     private readonly ILoggerFactory loggerFactory;
+    private readonly IAuthorizationContext authorizationContext;
 
-    public WholphinController(ILoggerFactory loggerFactory)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WholphinController"/> class.
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="authorizationContext">Identifies the caller of a request.</param>
+    public WholphinController(
+        ILoggerFactory loggerFactory,
+        IAuthorizationContext authorizationContext
+    )
     {
         this.loggerFactory = loggerFactory;
+        this.authorizationContext = authorizationContext;
         logger = loggerFactory.CreateLogger<WholphinController>();
     }
 
@@ -115,18 +126,49 @@ public class WholphinController : ControllerBase
         return Ok();
     }
 
+    /// <summary>
+    /// Gets the Seerr settings for the calling client. A <c>JellyfinToken</c> login is answered
+    /// with an <c>ApiKey</c> login holding the caller's own Jellyfin access token.
+    /// </summary>
+    /// <returns>The Seerr settings, or 404 when no Seerr server is configured.</returns>
     [Authorize]
     [HttpGet("seerrsettings")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<SeerrConfig> GetSeerrSettings()
+    public async Task<ActionResult<SeerrConfig>> GetSeerrSettings()
     {
         var seerr = WholphinPlugin.Instance!.Configuration.SeerrConfig;
         if (string.IsNullOrWhiteSpace(seerr.ServerUrl))
         {
             return NotFound();
         }
-        return seerr;
+        if (seerr.Login?.Type != SeerrLoginType.JellyfinToken)
+        {
+            return seerr;
+        }
+
+        var auth = await authorizationContext
+            .GetAuthorizationInfo(HttpContext)
+            .ConfigureAwait(false);
+        if (auth.IsApiKey)
+        {
+            return Forbid();
+        }
+        if (!auth.IsAuthenticated || auth.User is null || !auth.HasToken)
+        {
+            return Unauthorized();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.Pragma = "no-cache";
+        return new SeerrConfig
+        {
+            Version = seerr.Version,
+            ServerUrl = seerr.ServerUrl,
+            Login = new SeerrLogin { Type = SeerrLoginType.ApiKey, ApiKey = auth.Token },
+        };
     }
 
     [HttpGet("config/seerr")]
