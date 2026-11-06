@@ -58,12 +58,36 @@ public class WholphinController : ControllerBase
             //   DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             // };
             // return new JsonResult(settings, options);
-            return settings;
+            return new HomePageSettings
+            {
+                Version = settings.Version,
+                Rows = settings.Rows.Where(IsActive).ToArray(),
+            };
         }
         else
         {
             return null;
         }
+    }
+
+    private bool IsActive(HomeRowConfig row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Range))
+        {
+            return true;
+        }
+
+        if (!row.TryGetDateRange(out var start, out var end))
+        {
+            logger.LogWarning("Skipping home row with invalid date range: {Range}", row.Range);
+            return false;
+        }
+
+        var now = DateTime.Today;
+        var today = new DateTime(2000, now.Month, now.Day);
+        return start <= end
+            ? start <= today && today <= end
+            : start <= today || today <= end;
     }
 
     [HttpGet("config")]
@@ -103,11 +127,12 @@ public class WholphinController : ControllerBase
         try
         {
             p = WholphinPlugin.YamlDeserializer.Deserialize<HomePageSettings>(config.Value);
+            p?.ValidateRanges();
         }
         catch (Exception e)
         {
             logger.LogError(e, "Error parsing");
-            return BadRequest(e.Data.ToString());
+            return BadRequest(e.Message);
         }
         var toSave = WholphinPlugin.Instance!.Configuration;
         toSave.HomeConfig.HomePageSettings = p;
@@ -149,6 +174,7 @@ public class WholphinController : ControllerBase
         try
         {
             s = WholphinPlugin.YamlDeserializer.Deserialize<SeerrConfig>(config.Value);
+            WholphinPlugin.Instance!.Configuration.HomeConfig?.HomePageSettings?.ValidateRanges();
         }
         catch (Exception e)
         {

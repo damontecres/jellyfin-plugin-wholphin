@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Enums;
@@ -38,6 +39,33 @@ public abstract class HomeRowConfig
 
     [JsonPropertyName("viewOptions")]
     public HomeRowViewOptions ViewOptions { get; set; }
+
+    [JsonPropertyName("range")]
+    public string? Range { get; set; }
+
+    internal bool TryGetDateRange(out DateTime start, out DateTime end)
+    {
+        start = new DateTime(2000, 1, 1);
+        end = new DateTime(2000, 12, 31);
+        if (string.IsNullOrWhiteSpace(Range))
+        {
+            return true;
+        }
+
+        var days = Range.Split('-');
+        return days.Length <= 2
+            && TryParseDay(days[0], out start)
+            && TryParseDay(days[^1], out end);
+    }
+
+    private static bool TryParseDay(string day, out DateTime result) =>
+        DateTime.TryParseExact(
+            day + " 2000",
+            "MMMd yyyy",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AllowWhiteSpaces,
+            out result
+        );
 }
 
 public class ContinueWatching : HomeRowConfig { }

@@ -95,6 +95,7 @@ Sample YAML for home page rows
 - type: ByParent
   parentId: <UUID> # Library/Collection/Playlist ID
   recursive: true
+  range: oct15-oct31 # Optional, any row type: only shown between these dates each year
   sort: # Optional
     sort: SortName
     direction: Ascending
