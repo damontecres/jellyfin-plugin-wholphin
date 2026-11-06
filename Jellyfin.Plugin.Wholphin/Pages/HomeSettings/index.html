@@ -106,7 +106,7 @@
 
             var WholphinPluginConfiguration = {
                 uniquePluginId: "00E68C90-8840-48D0-AD65-0A5D58249652",
-                configUrl: window.ApiClient.getUrl('wholphin/config'),
+                configUrl: window.ApiClient.getUrl('wholphin/config/home'),
                 config: {},
                 metadata: {names: {}},
 
@@ -129,12 +129,7 @@
                     if(isYaml){
                         try {
                             const yamlConfig = jsyaml.load(document.getElementById('yamlConfig').value);
-                            ApiClient.ajax({
-                                type: 'POST',
-                                url: WholphinPluginConfiguration.configUrl,
-                                data: JSON.stringify(yamlConfig),
-                                contentType: 'application/json'
-                            }).then(function (result) {
+                            ApiClient.updatePluginConfiguration(WholphinPluginConfiguration.uniquePluginId, yamlConfig).then(function (result) {
                                 Dashboard.processPluginConfigurationUpdateResult(result);
                                 WholphinPluginConfiguration.config = yamlConfig
                                 Dashboard.hideLoadingMsg();

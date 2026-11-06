@@ -14,7 +14,6 @@ using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Wholphin.Api;
@@ -98,33 +97,6 @@ public class WholphinController : ControllerBase
     {
         var config = WholphinPlugin.Instance!.Configuration;
         return Ok(config);
-    }
-
-    /// <summary>
-    /// Saves plugin settings and returns date range validation errors to the dashboard.
-    /// </summary>
-    /// <param name="config">The plugin settings to save.</param>
-    /// <returns>The save result, or a validation error.</returns>
-    [HttpPost("config")]
-    [Authorize(Policy = Policies.RequiresElevation)]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public ActionResult SaveConfig([FromBody, ValidateNever] PluginConfiguration config)
-    {
-        // Match the native plugin endpoint: validate through UpdateConfiguration.
-        if (config is null)
-        {
-            return BadRequest("Configuration is required.");
-        }
-        try
-        {
-            WholphinPlugin.Instance!.UpdateConfiguration(config);
-        }
-        catch (ArgumentException e)
-        {
-            return BadRequest(e.Message);
-        }
-        return Ok();
     }
 
     [HttpGet("config/home")]
