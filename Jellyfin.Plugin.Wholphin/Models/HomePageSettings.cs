@@ -26,4 +26,18 @@ public class HomePageSettings
 
     [JsonPropertyName("rows")]
     public HomeRowConfig[] Rows { get; set; } = [];
+
+    internal void ValidateRanges()
+    {
+        for (var i = 0; i < Rows.Length; i++)
+        {
+            if (!Rows[i].TryGetDateRange(out _, out _))
+            {
+                throw new ArgumentException(
+                    $"Home row {i + 1} has an invalid range '{Rows[i].Range}'. "
+                        + "Use a date such as oct15 or a range such as oct15-oct31."
+                );
+            }
+        }
+    }
 }

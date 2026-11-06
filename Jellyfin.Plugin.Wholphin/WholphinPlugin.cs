@@ -69,6 +69,13 @@ public class WholphinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
     }
 
     /// <inheritdoc />
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        ((PluginConfiguration)configuration).HomeConfig?.HomePageSettings?.ValidateRanges();
+        base.UpdateConfiguration(configuration);
+    }
+
+    /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
     {
         return new List<PluginPageInfo>

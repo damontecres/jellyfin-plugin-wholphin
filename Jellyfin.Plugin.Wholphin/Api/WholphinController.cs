@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,6 +14,7 @@ using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Wholphin.Api;
@@ -71,29 +71,24 @@ public class WholphinController : ControllerBase
         }
     }
 
-    private static bool IsActive(HomeRowConfig row)
+    private bool IsActive(HomeRowConfig row)
     {
         if (string.IsNullOrWhiteSpace(row.Range))
         {
             return true;
         }
 
+        if (!row.TryGetDateRange(out var start, out var end))
+        {
+            logger.LogWarning("Skipping home row with invalid date range: {Range}", row.Range);
+            return false;
+        }
+
         var now = DateTime.Today;
         var today = new DateTime(2000, now.Month, now.Day);
-        var days = row
-            .Range.Split('-')
-            .Select(d =>
-                DateTime.ParseExact(
-                    d + " 2000",
-                    "MMMd yyyy",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.AllowWhiteSpaces
-                )
-            )
-            .ToArray();
-        return days[0] <= days[^1]
-            ? days[0] <= today && today <= days[^1]
-            : days[0] <= today || today <= days[^1];
+        return start <= end
+            ? start <= today && today <= end
+            : start <= today || today <= end;
     }
 
     [HttpGet("config")]
@@ -103,6 +98,33 @@ public class WholphinController : ControllerBase
     {
         var config = WholphinPlugin.Instance!.Configuration;
         return Ok(config);
+    }
+
+    /// <summary>
+    /// Saves plugin settings and returns date range validation errors to the dashboard.
+    /// </summary>
+    /// <param name="config">The plugin settings to save.</param>
+    /// <returns>The save result, or a validation error.</returns>
+    [HttpPost("config")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult SaveConfig([FromBody, ValidateNever] PluginConfiguration config)
+    {
+        // Match the native plugin endpoint: validate through UpdateConfiguration.
+        if (config is null)
+        {
+            return BadRequest("Configuration is required.");
+        }
+        try
+        {
+            WholphinPlugin.Instance!.UpdateConfiguration(config);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+        return Ok();
     }
 
     [HttpGet("config/home")]
@@ -133,11 +155,12 @@ public class WholphinController : ControllerBase
         try
         {
             p = WholphinPlugin.YamlDeserializer.Deserialize<HomePageSettings>(config.Value);
+            p?.ValidateRanges();
         }
         catch (Exception e)
         {
             logger.LogError(e, "Error parsing");
-            return BadRequest(e.Data.ToString());
+            return BadRequest(e.Message);
         }
         var toSave = WholphinPlugin.Instance!.Configuration;
         toSave.HomeConfig.HomePageSettings = p;
@@ -179,6 +202,7 @@ public class WholphinController : ControllerBase
         try
         {
             s = WholphinPlugin.YamlDeserializer.Deserialize<SeerrConfig>(config.Value);
+            WholphinPlugin.Instance!.Configuration.HomeConfig?.HomePageSettings?.ValidateRanges();
         }
         catch (Exception e)
         {
