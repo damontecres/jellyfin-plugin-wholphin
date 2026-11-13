@@ -11,6 +11,7 @@ namespace Jellyfin.Plugin.Wholphin.Models;
 [XmlInclude(typeof(RecentlyAdded))]
 [XmlInclude(typeof(RecentlyReleased))]
 [XmlInclude(typeof(Genres))]
+[XmlInclude(typeof(Studios))]
 [XmlInclude(typeof(Favorite))]
 [XmlInclude(typeof(Recordings))]
 [XmlInclude(typeof(TvPrograms))]
