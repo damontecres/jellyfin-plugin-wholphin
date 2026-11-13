@@ -1,28 +1,54 @@
+using System.ComponentModel;
+using System.Text.Json.Serialization;
+
 namespace Jellyfin.Plugin.Wholphin.Models;
 
+// Defaults match the Wholphin app's, so a partially specified config never produces zero sizes.
+// [DefaultValue] keeps YAML export from dropping values that equal the default and then re-importing them as something else.
+// Explicit camelCase names and string enums keep the JSON the app reads independent of the server's JSON options.
 public record HomeRowViewOptions
 {
-    public int HeightDp { get; set; }
+    [JsonPropertyName("heightDp")]
+    [DefaultValue(172)]
+    public int HeightDp { get; set; } = 172;
 
-    public int Spacing { get; set; }
+    [JsonPropertyName("spacing")]
+    [DefaultValue(16)]
+    public int Spacing { get; set; } = 16;
 
-    public PrefContentScale ContentScale { get; set; }
+    [JsonPropertyName("contentScale")]
+    [DefaultValue(PrefContentScale.FILL)]
+    public PrefContentScale ContentScale { get; set; } = PrefContentScale.FILL;
 
-    public AspectRatio AspectRatio { get; set; }
+    [JsonPropertyName("aspectRatio")]
+    [DefaultValue(AspectRatio.TALL)]
+    public AspectRatio AspectRatio { get; set; } = AspectRatio.TALL;
 
-    public ViewOptionImageType ImageType { get; set; }
+    [JsonPropertyName("imageType")]
+    [DefaultValue(ViewOptionImageType.PRIMARY)]
+    public ViewOptionImageType ImageType { get; set; } = ViewOptionImageType.PRIMARY;
 
+    [JsonPropertyName("showTitles")]
     public bool ShowTitles { get; set; }
 
-    public bool UseSeries { get; set; }
+    [JsonPropertyName("useSeries")]
+    [DefaultValue(true)]
+    public bool UseSeries { get; set; } = true;
 
-    public PrefContentScale EpisodeContentScale { get; set; }
+    [JsonPropertyName("episodeContentScale")]
+    [DefaultValue(PrefContentScale.FILL)]
+    public PrefContentScale EpisodeContentScale { get; set; } = PrefContentScale.FILL;
 
-    public AspectRatio EpisodeAspectRatio { get; set; }
+    [JsonPropertyName("episodeAspectRatio")]
+    [DefaultValue(AspectRatio.TALL)]
+    public AspectRatio EpisodeAspectRatio { get; set; } = AspectRatio.TALL;
 
-    public ViewOptionImageType EpisodeImageType { get; set; }
+    [JsonPropertyName("episodeImageType")]
+    [DefaultValue(ViewOptionImageType.PRIMARY)]
+    public ViewOptionImageType EpisodeImageType { get; set; } = ViewOptionImageType.PRIMARY;
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PrefContentScale>))]
 public enum PrefContentScale
 {
     FIT = 0,
@@ -34,6 +60,7 @@ public enum PrefContentScale
     UNRECOGNIZED = -1,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<AspectRatio>))]
 public enum AspectRatio
 {
     TALL = 0,
@@ -42,6 +69,7 @@ public enum AspectRatio
     SQUARE = 3,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<ViewOptionImageType>))]
 public enum ViewOptionImageType
 {
     PRIMARY = 0,

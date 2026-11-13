@@ -66,6 +66,37 @@ public class WholphinController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Returns a message for the first row the app would silently skip, or null if all rows are usable.
+    /// </summary>
+    public static string? Validate(HomePageSettings settings)
+    {
+        for (var i = 0; i < settings.Rows.Length; i++)
+        {
+            var row = settings.Rows[i];
+            var problem = row switch
+            {
+                CustomEndpoint c when string.IsNullOrWhiteSpace(c.Title) => "a title is required",
+                CustomEndpoint c when string.IsNullOrWhiteSpace(c.Endpoint) => "an endpoint is required",
+                CustomEndpoint c when c.Endpoint.Contains("://", StringComparison.Ordinal) =>
+                    "the endpoint must be a path relative to the server, like /HomeScreen/Section/Genre",
+                GetItems g when string.IsNullOrWhiteSpace(g.Name) => "a row title is required",
+                RecentlyAdded { ParentId: var id } when id == Guid.Empty => "choose a library",
+                RecentlyReleased { ParentId: var id } when id == Guid.Empty => "choose a library",
+                Genres { ParentId: var id } when id == Guid.Empty => "choose a library",
+                Studios { ParentId: var id } when id == Guid.Empty => "choose a library",
+                Suggestions { ParentId: var id } when id == Guid.Empty => "choose a library",
+                ByParent { ParentId: var id } when id == Guid.Empty => "choose a library, collection or playlist",
+                _ => null,
+            };
+            if (problem != null)
+            {
+                return $"Row {i + 1} ({row.GetType().Name}): {problem}";
+            }
+        }
+        return null;
+    }
+
     [HttpGet("config")]
     [Authorize(Policy = Policies.RequiresElevation)]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -107,7 +138,12 @@ public class WholphinController : ControllerBase
         catch (Exception e)
         {
             logger.LogError(e, "Error parsing");
-            return BadRequest(e.Data.ToString());
+            return BadRequest(e.Message);
+        }
+        var problem = Validate(p);
+        if (problem != null)
+        {
+            return BadRequest(problem);
         }
         var toSave = WholphinPlugin.Instance!.Configuration;
         toSave.HomeConfig.HomePageSettings = p;

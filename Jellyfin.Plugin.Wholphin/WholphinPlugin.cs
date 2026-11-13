@@ -36,7 +36,9 @@ public class WholphinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
         YamlSerializer = new SerializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .ConfigureDefaultValuesHandling(
-                DefaultValuesHandling.OmitDefaults | DefaultValuesHandling.OmitNull
+                DefaultValuesHandling.OmitDefaults
+                    | DefaultValuesHandling.OmitNull
+                    | DefaultValuesHandling.OmitEmptyCollections
             )
             .Build();
         YamlDeserializer = new DeserializerBuilder()
@@ -54,6 +56,7 @@ public class WholphinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
                         ["RecentlyAdded"] = typeof(RecentlyAdded),
                         ["RecentlyReleased"] = typeof(RecentlyReleased),
                         ["Genres"] = typeof(Genres),
+                        ["Studios"] = typeof(Studios),
                         ["Favorite"] = typeof(Favorite),
                         ["Recordings"] = typeof(Recordings),
                         ["TvPrograms"] = typeof(TvPrograms),

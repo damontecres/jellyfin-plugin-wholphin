@@ -99,10 +99,36 @@ Sample YAML for home page rows
     sort: SortName
     direction: Ascending
 
+# Studios in a TV show library
+- type: Studios
+  parentId: <UUID> # TV library UUID
+
+# Any Jellyfin items query. `filter` is required; lists such as sortBy/sortOrder pair up by position
+- type: GetItems
+  name: Highly Rated
+  filter:
+    recursive: true
+    includeItemTypes: [Movie, Series]
+    minCommunityRating: 7.5
+    sortBy: [CommunityRating]
+    sortOrder: [Descending]
+
+# Any row can override size and layout (values shown are the defaults)
+- type: NextUp
+  viewOptions:
+    heightDp: 172
+    spacing: 16
+    aspectRatio: TALL # TALL, WIDE, FOUR_THREE, SQUARE
+    imageType: PRIMARY # PRIMARY, THUMB
+    contentScale: FILL # FILL, FIT, CROP, NONE, Fill_WIDTH, FILL_HEIGHT
+    showTitles: false
+
 # Items from an arbitrary Jellyfin endpoint that returns a QueryResult<BaseItemDto>.
-# Lets other plugins (e.g. jellyfin-plugin-home-sections) feed rows into Wholphin
-# without Wholphin needing to know about them.
+# Lets other plugins feed rows into Wholphin without Wholphin needing to know about them,
+# for example Home Screen Sections, a separate plugin that has to be installed on the server:
+# https://github.com/IAmParadox27/jellyfin-plugin-home-sections
 #
+# `title` and `endpoint` are required; the app drops a row that has no title.
 # `userId` is injected automatically from the currently logged-in user. You can
 # override it by including a `userId` entry in `query`.
 - type: CustomEndpoint
@@ -114,6 +140,17 @@ Sample YAML for home page rows
   headers:                                            # Optional extra headers (auth token is added automatically)
     - key: X-Trace
       value: wholphin
+
+# With the Home Screen Sections plugin installed, it lists its sections at /HomeScreen/Sections.
+# A section that takes a parameter (Genre, Studio, DirectedBy, ...) gets it as `additionalData`.
+# Items are shown as the endpoint returns them, and Home Screen Sections leaves out
+# descriptions, so these cards have no overview to show under the header.
+- type: CustomEndpoint
+  title: Action Movies
+  endpoint: /HomeScreen/Section/Genre
+  query:
+    - key: additionalData
+      value: Action
 
 ```
 
