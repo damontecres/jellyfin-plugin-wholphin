@@ -8,6 +8,7 @@ public enum SeerrLoginType
     None,
     ApiKey,
     Local,
+    JellyfinAccount,
 }
 
 public class SeerrLogin

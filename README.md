@@ -123,7 +123,7 @@ When set, Wholphin will automatically configure its Seerr connection on first
 login using these values. If `login` is omitted, only the URL is pushed and the
 user supplies authentication themselves.
 
-Two login types are supported when credentials are provided:
+Three login types are supported when credentials are provided:
 
 ```yaml
 # 1) API key — same login for everyone, no Seerr account needed per user
@@ -138,6 +138,13 @@ login:
   local:
     username: "household@example.com"
     password: "..."
+# 3) Auto-link: each Jellyfin user is logged in as their own linked Seerr account.
+#    Wholphin's Seerr requests are proxied through this plugin using the admin API key below,
+#    which never leaves the server. Users without a Seerr account keep their own login.
+serverUrl: https://seerr.example.com   # Seerr as seen from the Jellyfin server
+login:
+  type: JellyfinAccount
+  apiKey: "<seerr-admin-api-key>"
 ```
 
 ## Acknowledgements
